@@ -1,0 +1,42 @@
+[tool.poetry]
+name = "bdemo"
+version = "0.0.1"
+description = "Build123D Experiments on Mutable Objects."
+authors = ["Nathanaël Jourdane <njourdane@protonmail.com>"]
+license = "MIT"
+readme = "README.md"
+repository = "https://codeberg.org/roipoussiere/bdemo"
+keywords = ["cad", "build123d"]
+classifiers = [
+    "Intended Audience :: Manufacturing",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Multimedia :: Graphics :: 3D Modeling",
+    "Topic :: Scientific/Engineering",
+]
+exclude = [
+    "tests",
+    "examples",
+    "docs",
+]
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.13"
+build123d = "^0.8.0"
+
+[tool.poetry.group.dev]
+optional = true
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.7.3"
+pytest = "^8.3.4"
+ocp-vscode = "^2.6.1"
+
+[tool.ruff]
+line-length = 80
+target-version = "py311"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
