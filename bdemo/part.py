@@ -11,8 +11,17 @@ class Part:
         self.object = obj
         self.operations = [Operation(obj, obj.__class__.__name__, None, color)]
 
-    def __call__(self) -> _.Part:
-        return self.object
+    def __call__(self) -> list[_.Face]:
+        faces = []
+        for label, face in self.operations[-1].faces.items():
+            for operation in self.operations:
+                if label in operation.very_new_faces:
+                    face.color = operation.color
+                elif operation.last and label in operation.new_faces:
+                    face.color = operation.last.color
+            faces.append(face)
+
+        return faces
 
     def __and__(self, part: Part) -> Part:
         return Part(self.object + part.object)
