@@ -44,10 +44,10 @@ class Part:
         obj = self.object - self.cast_part(part)
         return self.mutate('sub', obj, color)
 
-    def fillet(self, radius: float, edge_list: Iterable[_.Edge], color: str|None=None) -> Operation:
+    def fillet(self, edge_list: Iterable[_.Edge], radius: float, color: str|None=None) -> Operation:
         obj = self.object.fillet(radius, edge_list)
         return self.mutate('fillet', obj, color)
 
-    def chamfer(self, length: float, length2: float|None, edge_list: Iterable[_.Edge], face: _.Face|None=None, color: str|None=None) -> Operation:
+    def chamfer(self, edge_list: Iterable[_.Edge], length: float, length2: float|None=None, face: _.Face|None=None, color: str|None=None) -> Operation:
         obj = self.object.chamfer(length, length2, edge_list, face)
         return self.mutate('chamfer', obj, color)
