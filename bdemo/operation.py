@@ -6,9 +6,11 @@ operations = {}
 
 
 class Operation:
-    def __init__(self, obj: _.Part, name: str, last: Operation|None) -> None:
+    def __init__(self, obj: _.Part, name: str, last: Operation|None, color: str|None=None) -> None:
         self.name = name
         self.last = last
+        self.color = color
+
         operations[name] = operations[name] + 1 if name in operations else 1
         self.id = f"{ name }-{ operations[name] }"
 

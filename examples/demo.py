@@ -1,12 +1,11 @@
-from bdemo.part_primitives import Box, Cylinder
+from bdemo.primitives import Box, Cylinder
 
-obj = Box(9, 9, 3)
-obj.add(Box(6, 6, 6))
-obj.add(Box(3, 3, 9))
-obj.sub(Cylinder(1, 9))
+obj = Box(9, 9, 3, color="orange")
+obj.add(Box(6, 6, 6, color="red"))
+obj.add(Box(3, 3, 9, color="green"))
+obj.sub(Cylinder(1, 9, color="blue"))
 
 for operation in obj.operations:
-    # print(operation, list(operation.faces.keys()))
     print(operation)
 
 if __name__ == "__main__":
