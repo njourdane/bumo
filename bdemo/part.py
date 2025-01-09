@@ -23,12 +23,16 @@ class Part:
         self.operations.append(operation)
         return operation
 
-    def add(self, part: Part, color: str|None=None) -> Operation:
-        obj = self.object + part.object
+    @classmethod
+    def cast_part(cls, part: Part|_.Part) -> _.Part:
+        return part if isinstance(part, _.Part) else part.object
+
+    def add(self, part: Part|_.Part, color: str|None=None) -> Operation:
+        obj = self.object + self.cast_part(part)
         return self.mutate('add', obj, color)
 
-    def sub(self, part: Part, color: str|None=None) -> Operation:
-        obj = self.object - part.object
+    def sub(self, part: Part|_.Part, color: str|None=None) -> Operation:
+        obj = self.object - self.cast_part(part)
         return self.mutate('sub', obj, color)
 
     def fillet(self, radius: float, edge_list: Iterable[_.Edge], color: str|None=None) -> Operation:
