@@ -1,49 +1,36 @@
 from __future__ import annotations
+from typing import Iterable
+
 import build123d as _
+
+from .operation import Operation
 
 
 class Part:
-    def __init__(self, obj: _.Part):
-        self.obj = obj
-        self.name = 'Part'
+    def __init__(self, obj: _.Part, name: str=''):
+        self.object = obj
+        self.operations = [Operation(obj, name, None)]
 
     def __call__(self) -> _.Part:
-        return self.obj
+        return self.object
 
-    def add(self, part: Part) -> Part:
-        self.obj += part.obj
-        self.name = f"{self.name} + {part.name}"
-        return self
+    def __and__(self, part: Part) -> Part:
+        return Part(self.object + part.object)
 
-    def __add__(self, part: Part) -> Part:
-        return Part(self.obj + part.obj)
+    def mutate(self, name: str, obj: _.Part) -> Operation:
+        self.object = obj
+        operation = Operation(obj, name, self.operations[-1])
+        self.operations.append(operation)
+        return operation
 
-    def sub(self, part: Part) -> Part:
-        self.obj -= part.obj
-        self.name = f"{self.name} - {part.name}"
-        return self
+    def add(self, part: Part) -> Operation:
+        return self.mutate('add', self.object + part.object)
 
-    def __sub__(self, part: Part) -> Part:
-        return Part(self.obj - part.obj)
+    def sub(self, part: Part) -> Operation:
+        return self.mutate('sub', self.object - part.object)
 
-    # def chamfer(self, part: Self) -> Self:
-    #     self.obj -= part.obj
-    #     return self
+    def fillet(self, radius: float, edge_list: Iterable[_.Edge]) -> Operation:
+        return self.mutate('fillet', self.object.fillet(radius, edge_list))
 
-    def Box(self):
-        pass
-
-    def __str__(self) -> str:
-        return self.name
-
-
-class Box(Part):
-    def __init__(self, length: float, width: float, height: float) -> None:
-        super().__init__(_.Box(length, width, height))
-        self.name = f"Part({length}, {width}, {height})"
-
-
-class Cylinder(Part):
-    def __init__(self, radius: float, height: float, arc_size: float=360) -> None:
-        super().__init__(_.Cylinder(radius, height, arc_size))
-        self.name = f"Cylinder({radius}, {height})"
+    def chamfer(self, length: float, length2: float|None, edge_list: Iterable[_.Edge], face: _.Face|None=None) -> Operation:
+        return self.mutate('chamfer', self.object.chamfer(length, length2, edge_list, face))
