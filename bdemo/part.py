@@ -7,9 +7,9 @@ from .operation import Operation
 
 
 class Part:
-    def __init__(self, obj: _.Part, name: str=''):
+    def __init__(self, obj: _.Part):
         self.object = obj
-        self.operations = [Operation(obj, name, None)]
+        self.operations = [Operation(obj, obj.__class__.__name__, None)]
 
     def __call__(self) -> _.Part:
         return self.object
