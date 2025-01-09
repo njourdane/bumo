@@ -36,13 +36,19 @@ class Part:
     def cast_part(cls, part: Part|_.Part) -> _.Part:
         return part if isinstance(part, _.Part) else part.object
 
+    @classmethod
+    def part_color(cls, part: Part|_.Part) -> str|None:
+        if isinstance(part, Part) and len(part.operations) == 1:
+            return part.operations[-1].color
+        return None
+
     def add(self, part: Part|_.Part, color: str|None=None) -> Operation:
         obj = self.object + self.cast_part(part)
-        return self.mutate('add', obj, color)
+        return self.mutate('add', obj, color or self.part_color(part))
 
     def sub(self, part: Part|_.Part, color: str|None=None) -> Operation:
         obj = self.object - self.cast_part(part)
-        return self.mutate('sub', obj, color)
+        return self.mutate('sub', obj, color or self.part_color(part))
 
     def fillet(self, edge_list: Iterable[_.Edge], radius: float, color: str|None=None) -> Operation:
         obj = self.object.fillet(radius, edge_list)
