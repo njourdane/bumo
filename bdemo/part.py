@@ -7,30 +7,53 @@ from .operation import Operation
 
 
 class Part:
-    def __init__(self, obj: _.Part, color: str|None=None):
-        self.object = obj
-        self.operations = [Operation(obj, obj.__class__.__name__, None, color)]
+    def __init__(self, part: _.Part, color: str|None=None):
+        self.object = part
+        self.operations: list[Operation] = []
+        self.mutate(self.__class__.__name__, part, color)
 
     def __call__(self) -> list[_.Face]:
-        faces = []
-        for label, face in self.operations[-1].faces.items():
-            for operation in self.operations:
-                if label in operation.very_new_faces:
-                    face.color = operation.color
-                elif operation.last and label in operation.new_faces:
-                    face.color = operation.last.color
-            faces.append(face)
+        faces = self.operations[-1].faces
+        faces_color = self.get_faces_color()
 
-        return faces
+        for face_id, face in faces.items():
+            face.color = faces_color[face_id]
+
+        return list(faces.values())
 
     def __and__(self, part: Part) -> Part:
-        return Part(self.object + part.object)
+        return Part(self.object & part.object)
+
+    def get_faces_color(self) -> dict[str, str|None]:
+        faces_color: dict[str, str|None] = {}
+
+        for opr in self.operations:
+
+            for face_id in opr.faces_added:
+                faces_color[face_id] = opr.color
+
+            removed = list({faces_color[rm_id] for rm_id in opr.faces_removed})
+            for face_id in opr.faces_altered:
+                if len(removed) == 1:
+                    faces_color[face_id] = removed[0]
+                else:
+                    faces_color[face_id] = "grey"
+
+        return faces_color
+
+    def get_operation(self, op_id: str) -> Operation|None:
+        for operation in self.operations:
+            if operation.id == op_id:
+                return operation
+        return None
 
     def mutate(self, name: str, obj: _.Part, color: str|None=None) -> Operation:
         self.object = obj
-        operation = Operation(obj, name, self.operations[-1], color)
-        self.operations.append(operation)
-        return operation
+        last_operation = self.operations[-1] if self.operations else None
+        opr = Operation(obj, last_operation, name, len(self.operations), color)
+
+        self.operations.append(opr)
+        return opr
 
     @classmethod
     def cast_part(cls, part: Part|_.Part) -> _.Part:
