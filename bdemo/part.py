@@ -27,8 +27,8 @@ class Part:
 
         return list(faces.values())
 
-    def __and__(self, part: Part) -> Part:
-        return Part(self.object & part.object)
+    def __mul__(self, location: _.Location) -> Part:
+        return Part(location * self.object)
 
     def get_faces_color(self) -> dict[str, ColorLike|None]:
         faces_color: dict[str, ColorLike|None] = {}
@@ -90,6 +90,10 @@ class Part:
         if isinstance(part, Part) and len(part.operations) == 1:
             return part.operations[-1].color
         return None
+
+    def move(self, location: _.Location, color: str|None=None, debug=False) -> Operation:
+        obj = location * self.object
+        return self.mutate('add', obj, color, debug)
 
     def add(self, part: Part|_.Part, color: str|None=None, debug=False) -> Operation:
         obj = self.object + self.cast_part(part)
