@@ -32,12 +32,16 @@ class Part:
             for face_id in opr.faces_added:
                 faces_color[face_id] = opr.color
 
-            removed = list({faces_color[rm_id] for rm_id in opr.faces_removed})
+            rem_colors = {faces_color[rm_id] for rm_id in opr.faces_removed}
+            if len(rem_colors) > 1:
+                for rm_id, rm_face in opr.faces_removed.items():
+                    assert opr.last_operation
+                    if not opr.last_operation.is_altered_face(rm_face):
+                        rem_colors.remove(faces_color[rm_id])
+
+            color = rem_colors.pop() if len(rem_colors) == 1 else None
             for face_id in opr.faces_altered:
-                if len(removed) == 1:
-                    faces_color[face_id] = removed[0]
-                else:
-                    faces_color[face_id] = "grey"
+                faces_color[face_id] = color
 
         return faces_color
 

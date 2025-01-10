@@ -48,7 +48,8 @@ class Operation:
         edges = self.last_operation.edges if self.last_operation and state == ShapeState.removed else self.edges
         return {id: edges[id] for id, es in self.edges_state.items() if es == state}
 
-    def get_id(self, shape: _.Shape) -> str:
+    @classmethod
+    def get_id(cls, shape: _.Shape) -> str:
         return hex(hash(shape))[2:]
 
     def get_shapes_obj(self) -> list[_.Shape]:
@@ -56,6 +57,16 @@ class Operation:
 
     def get_shapes_name(self) -> list[str]:
         return list(self.shapes.keys())
+
+    def is_altered_face(self, face: _.Face):
+        if not self.last_operation:
+            return True
+
+        for edge in face.edges():
+            if self.get_id(edge) in self.last_operation.edges:
+                return True
+
+        return False
 
     def get_faces_state(self) -> dict[str, ShapeState]:
         def get_state(face_id: str, face: _.Face) -> ShapeState:
@@ -65,9 +76,8 @@ class Operation:
             if face_id in self.last_operation.faces:
                 return ShapeState.untouched
 
-            for edge in face.edges():
-                if self.get_id(edge) in self.last_operation.edges:
-                    return ShapeState.altered
+            if self.is_altered_face(face):
+                return ShapeState.altered
 
             return ShapeState.added
 
@@ -80,6 +90,16 @@ class Operation:
 
         return faces
 
+    def is_altered_edge(self, edge: _.Edge):
+        if not self.last_operation:
+            return True
+
+        for vertex in edge.vertices():
+            if self.get_id(vertex) in self.last_operation.vertices:
+                return True
+
+        return False
+
     def get_edges_state(self) -> dict[str, ShapeState]:
         def get_state(edge_id: str, edge: _.Edge) -> ShapeState:
             if not self.last_operation:
@@ -88,9 +108,8 @@ class Operation:
             if edge_id in self.last_operation.edges:
                 return ShapeState.untouched
 
-            for vertex in edge.vertices():
-                if self.get_id(vertex) in self.last_operation.vertices:
-                    return ShapeState.altered
+            if self.is_altered_edge(edge):
+                return ShapeState.altered
 
             return ShapeState.added
 
