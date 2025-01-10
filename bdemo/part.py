@@ -5,13 +5,15 @@ from typing import Iterable
 import build123d as _
 
 from .operation import Operation
+from .utils import ColorLike, to_color
 
 
 class Part:
-    def __init__(self, part: _.Part, color: str|None=None):
+    def __init__(self, part: _.Part, color: ColorLike|None=None):
         self.object = part
         self.operations: list[Operation] = []
         self.mutate(self.__class__.__name__, part, color)
+        self.debug_faces: dict[str, ColorLike] = {}
 
     def __call__(self) -> list[_.Face]:
         faces = self.operations[-1].faces
@@ -26,8 +28,8 @@ class Part:
     def __and__(self, part: Part) -> Part:
         return Part(self.object & part.object)
 
-    def get_faces_color(self) -> dict[str, str|None]:
-        faces_color: dict[str, str|None] = {}
+    def get_faces_color(self) -> dict[str, ColorLike|None]:
+        faces_color: dict[str, ColorLike|None] = {}
 
         for opr in self.operations:
 
@@ -45,6 +47,14 @@ class Part:
             for face_id in opr.faces_altered:
                 faces_color[face_id] = color
 
+        if self.debug_faces:
+            for face_id, color in faces_color.items():
+                if face_id in self.debug_faces:
+                    faces_color[face_id] = self.debug_faces[face_id]
+                else:
+                    r, v, b = to_color(color).to_tuple()[:3]
+                    faces_color[face_id] = _.Color(r, v, b, 0.1)
+
         return faces_color
 
     def get_operation(self, op_id: str) -> Operation|None:
@@ -53,7 +63,11 @@ class Part:
                 return operation
         return None
 
-    def mutate(self, name: str, obj: _.Part, color: str|None=None) -> Operation:
+    def debug(self, faces: list[str], color: ColorLike="red"):
+        for face_id in faces:
+            self.debug_faces[face_id] = color
+
+    def mutate(self, name: str, obj: _.Part, color: ColorLike|None=None) -> Operation:
         self.object = obj
         last_operation = self.operations[-1] if self.operations else None
         opr = Operation(obj, last_operation, name, len(self.operations), color)
@@ -66,7 +80,7 @@ class Part:
         return part if isinstance(part, _.Part) else part.object
 
     @classmethod
-    def part_color(cls, part: Part|_.Part) -> str|None:
+    def part_color(cls, part: Part|_.Part) -> ColorLike|None:
         if isinstance(part, Part) and len(part.operations) == 1:
             return part.operations[-1].color
         return None

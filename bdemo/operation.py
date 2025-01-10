@@ -3,6 +3,8 @@ from enum import Enum
 
 import build123d as _
 
+from .utils import ColorLike
+
 
 class ShapeState(Enum):
     added = 1
@@ -12,7 +14,7 @@ class ShapeState(Enum):
 
 
 class Operation:
-    def __init__(self, obj: _.Part, last_operation: Operation|None, name: str, index: int, color: str|None=None) -> None:
+    def __init__(self, obj: _.Part, last_operation: Operation|None, name: str, index: int, color: ColorLike|None=None) -> None:
         self.last_operation = last_operation
         self.name = name
         self.index = index
