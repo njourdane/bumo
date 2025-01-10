@@ -1,4 +1,5 @@
 from __future__ import annotations
+from os import PathLike
 from typing import Iterable
 
 import build123d as _
@@ -85,3 +86,11 @@ class Part:
     def chamfer(self, edge_list: Iterable[_.Edge], length: float, length2: float|None=None, face: _.Face|None=None, color: str|None=None) -> Operation:
         obj = self.object.chamfer(length, length2, edge_list, face)
         return self.mutate('chamfer', obj, color)
+
+    def export(self, exporter: _.Export2D, file_path: PathLike|bytes|str, include_part=True):
+        if include_part:
+            exporter.add_shape(self.object)
+        exporter.write(file_path)
+
+    def export_stl(self, file_path: PathLike|bytes|str, tolerance: float = 0.001, angular_tolerance: float = 0.1, ascii_format: bool = False):
+        _.export_stl(self.object, file_path, tolerance, angular_tolerance, ascii_format)
