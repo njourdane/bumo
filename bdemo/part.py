@@ -18,6 +18,7 @@ class Part:
 
         for face_id, face in faces.items():
             face.color = faces_color[face_id]
+            face.label = face_id
 
         return list(faces.values())
 
