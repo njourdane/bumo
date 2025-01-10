@@ -9,11 +9,13 @@ from .utils import ColorLike, to_color
 
 
 class Part:
-    def __init__(self, part: _.Part, color: ColorLike|None=None):
+    debug_alpha = 0.2
+
+    def __init__(self, part: _.Part, color: ColorLike|None=None, debug=False):
         self.object = part
         self.operations: list[Operation] = []
-        self.mutate(self.__class__.__name__, part, color)
         self.debug_faces: dict[str, ColorLike] = {}
+        self.mutate(self.__class__.__name__, part, color, debug)
 
     def __call__(self) -> list[_.Face]:
         faces = self.operations[-1].faces
@@ -53,7 +55,7 @@ class Part:
                     faces_color[face_id] = self.debug_faces[face_id]
                 else:
                     r, v, b = to_color(color).to_tuple()[:3]
-                    faces_color[face_id] = _.Color(r, v, b, 0.1)
+                    faces_color[face_id] = _.Color(r, v, b, self.debug_alpha)
 
         return faces_color
 
@@ -67,10 +69,14 @@ class Part:
         for face_id in faces:
             self.debug_faces[face_id] = color
 
-    def mutate(self, name: str, obj: _.Part, color: ColorLike|None=None) -> Operation:
+    def mutate(self, name: str, obj: _.Part, color: ColorLike|None, debug: bool) -> Operation:
         self.object = obj
         last_operation = self.operations[-1] if self.operations else None
         opr = Operation(obj, last_operation, name, len(self.operations), color)
+
+        if debug:
+            for face_id in opr.faces_added:
+                self.debug_faces[face_id] = color
 
         self.operations.append(opr)
         return opr
@@ -85,21 +91,21 @@ class Part:
             return part.operations[-1].color
         return None
 
-    def add(self, part: Part|_.Part, color: str|None=None) -> Operation:
+    def add(self, part: Part|_.Part, color: str|None=None, debug=False) -> Operation:
         obj = self.object + self.cast_part(part)
-        return self.mutate('add', obj, color or self.part_color(part))
+        return self.mutate('add', obj, color or self.part_color(part), debug)
 
-    def sub(self, part: Part|_.Part, color: str|None=None) -> Operation:
+    def sub(self, part: Part|_.Part, color: str|None=None, debug=False) -> Operation:
         obj = self.object - self.cast_part(part)
-        return self.mutate('sub', obj, color or self.part_color(part))
+        return self.mutate('sub', obj, color or self.part_color(part), debug)
 
-    def fillet(self, edge_list: Iterable[_.Edge], radius: float, color: str|None=None) -> Operation:
+    def fillet(self, edge_list: Iterable[_.Edge], radius: float, color: str|None=None, debug=False) -> Operation:
         obj = self.object.fillet(radius, edge_list)
-        return self.mutate('fillet', obj, color)
+        return self.mutate('fillet', obj, color, debug)
 
-    def chamfer(self, edge_list: Iterable[_.Edge], length: float, length2: float|None=None, face: _.Face|None=None, color: str|None=None) -> Operation:
+    def chamfer(self, edge_list: Iterable[_.Edge], length: float, length2: float|None=None, face: _.Face|None=None, color: str|None=None, debug=False) -> Operation:
         obj = self.object.chamfer(length, length2, edge_list, face)
-        return self.mutate('chamfer', obj, color)
+        return self.mutate('chamfer', obj, color, debug)
 
     def export(self, exporter: _.Export2D, file_path: PathLike|bytes|str, include_part=True):
         if include_part:

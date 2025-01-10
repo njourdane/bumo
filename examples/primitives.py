@@ -1,12 +1,12 @@
 from bdemo.primitives import Box, Cylinder
 
 
-obj = Box(9, 9, 3, color="orange")
+obj = Box(9, 9, 3, color="orange") #, debug=True)
 obj.add(Box(6, 6, 6, color="red"))
 g = obj.add(Box(3, 3, 9, color="green"))
 # obj.debug(list(g.faces_added.keys()))
 hole = obj.sub(Cylinder(1, 9, color="blue"))
-obj.chamfer(hole.edges_added.values(), 0.2, color="pink")
+obj.chamfer(hole.edges_added.values(), 0.2, color="pink") #, debug=True)
 
 for operation in obj.operations:
     print(operation)
