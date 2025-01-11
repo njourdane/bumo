@@ -5,7 +5,8 @@ from typing import Iterable
 import build123d as _
 
 from .operation import Operation
-from .utils import ColorLike, to_color, EdgeListLike, Hash, EdgeDict
+from .utils import ColorLike, to_color, Hash
+from .shapes import EdgeListLike, EdgeDict
 
 
 class Builder:

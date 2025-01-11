@@ -3,7 +3,8 @@ from hashlib import md5
 
 import build123d as _
 
-from .utils import ColorLike, ShapeState, Hash, FaceDict, EdgeDict
+from .utils import ColorLike, Hash
+from .shapes import ShapeState, FaceDict, EdgeDict
 
 
 class Operation:
