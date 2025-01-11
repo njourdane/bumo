@@ -1,5 +1,5 @@
 import build123d as _
-from bdemo.builder import Builder
+from bdemo import Builder
 
 Builder.default_color = "grey"
 
