@@ -6,11 +6,20 @@ from .utils import ColorLike, ShapeState
 
 
 class Operation:
-    def __init__(self, obj: _.Part, last_operation: Operation|None, name: str, index: int, color: ColorLike|None=None) -> None:
+    def __init__(
+        self,
+        obj: _.Part,
+        last_operation: Operation|None,
+        name: str,
+        index: int,
+        color: ColorLike|None,
+        faces_alias: dict[int, int]|None
+    ) -> None:
         self.last_operation = last_operation
         self.name = name
         self.index = index
         self.color = color
+        self.faces_alias = faces_alias or {}
 
         self.id = f"{ name }-{ index }"
 

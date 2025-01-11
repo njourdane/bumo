@@ -35,16 +35,16 @@ class Part:
         return Part(location * self.object)
 
     def get_face_operation(self, face: _.Face|int) -> Operation:
-        face_hash = Operation.hash_shape(face) if isinstance(face, _.Face) else face
+        _hash = Operation.hash_shape(face) if isinstance(face, _.Face) else face
         for operation in self.operations:
-            if face_hash in operation.faces:
+            if _hash in operation.faces:
                 return operation
         raise ValueError
 
     def get_edge_operation(self, edge: _.Edge|int) -> Operation:
-        edge_hash = Operation.hash_shape(edge) if isinstance(edge, _.Edge) else edge
+        _hash = Operation.hash_shape(edge) if isinstance(edge, _.Edge) else edge
         for operation in self.operations:
-            if edge_hash in operation.edges:
+            if _hash in operation.edges:
                 return operation
         raise ValueError
 
@@ -54,7 +54,12 @@ class Part:
         for opr in self.operations:
 
             for face_hash in opr.faces_added:
-                faces_color[face_hash] = opr.color
+                color = opr.color
+                if opr.faces_alias:
+                    old_hash = opr.faces_alias[face_hash]
+                    color = faces_color[old_hash]
+
+                faces_color[face_hash] = color
 
             rem_colors = {faces_color[rm_hash] for rm_hash in opr.faces_removed}
             if len(rem_colors) > 1:
@@ -87,10 +92,17 @@ class Part:
         for face_hash in face_hashes:
             self.debug_faces[face_hash] = color
 
-    def mutate(self, name: str, obj: _.Part, color: ColorLike|None, debug: bool) -> Operation:
+    def mutate(self, name: str, obj: _.Part, color: ColorLike|None, debug: bool, faces_alias: dict[int, int]|None=None) -> Operation:
         self.object = obj
-        last_operation = self.operations[-1] if self.operations else None
-        opr = Operation(obj, last_operation, name, len(self.operations), color)
+
+        opr = Operation(
+            obj,
+            self.operations[-1] if self.operations else None,
+            name,
+            len(self.operations),
+            color,
+            faces_alias
+        )
 
         if debug:
             for face_hash in opr.faces_added:
@@ -115,7 +127,14 @@ class Part:
 
     def move(self, location: _.Location, color: ColorLike|None=None, debug=False) -> Operation:
         obj = location * self.object
-        return self.mutate('add', obj, color, debug)
+
+        faces_alias: dict[int, int] = {}
+        for face in self.object.faces():
+            old_hash = Operation.hash_shape(face)
+            new_hash = Operation.hash_shape(location * face)
+            faces_alias[new_hash] = old_hash
+
+        return self.mutate('move', obj, color, debug, faces_alias)
 
     def add(self, part: Part|_.Part, color: ColorLike|None=None, debug=False) -> Operation:
         obj = self.object + self.cast_part(part)
