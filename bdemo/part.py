@@ -14,48 +14,48 @@ class Part:
     def __init__(self, part: _.Part, color: ColorLike|None=None, debug=False):
         self.object = part
         self.operations: list[Operation] = []
-        self.debug_faces: dict[str, ColorLike] = {}
+        self.debug_faces: dict[int, ColorLike] = {}
         self.mutate(self.__class__.__name__, part, color, debug)
 
     def __call__(self) -> list[_.Face]:
         faces = self.operations[-1].faces
         faces_color = self.get_faces_color()
 
-        for face_id, face in faces.items():
-            face.color = faces_color[face_id]
-            face.label = face_id
+        for face_hash, face in faces.items():
+            face.color = faces_color[face_hash]
+            face.label = hex(face_hash)[2:]
 
         return list(faces.values())
 
     def __mul__(self, location: _.Location) -> Part:
         return Part(location * self.object)
 
-    def get_faces_color(self) -> dict[str, ColorLike|None]:
-        faces_color: dict[str, ColorLike|None] = {}
+    def get_faces_color(self) -> dict[int, ColorLike|None]:
+        faces_color: dict[int, ColorLike|None] = {}
 
         for opr in self.operations:
 
-            for face_id in opr.faces_added:
-                faces_color[face_id] = opr.color
+            for face_hash in opr.faces_added:
+                faces_color[face_hash] = opr.color
 
-            rem_colors = {faces_color[rm_id] for rm_id in opr.faces_removed}
+            rem_colors = {faces_color[rm_hash] for rm_hash in opr.faces_removed}
             if len(rem_colors) > 1:
-                for rm_id, rm_face in opr.faces_removed.items():
+                for rm_hash, rm_face in opr.faces_removed.items():
                     assert opr.last_operation
                     if not opr.last_operation.is_altered_face(rm_face):
-                        rem_colors.remove(faces_color[rm_id])
+                        rem_colors.remove(faces_color[rm_hash])
 
-            color = rem_colors.pop() if len(rem_colors) == 1 else None
-            for face_id in opr.faces_altered:
-                faces_color[face_id] = color
+            previous_color = rem_colors.pop() if len(rem_colors) == 1 else None
+            for face_hash in opr.faces_altered:
+                faces_color[face_hash] = previous_color
 
         if self.debug_faces:
-            for face_id, color in faces_color.items():
-                if face_id in self.debug_faces:
-                    faces_color[face_id] = self.debug_faces[face_id]
+            for face_hash, color in faces_color.items():
+                if face_hash in self.debug_faces:
+                    faces_color[face_hash] = self.debug_faces[face_hash]
                 else:
                     r, v, b = to_color(color).to_tuple()[:3]
-                    faces_color[face_id] = _.Color(r, v, b, self.debug_alpha)
+                    faces_color[face_hash] = _.Color(r, v, b, self.debug_alpha)
 
         return faces_color
 
@@ -65,9 +65,9 @@ class Part:
                 return operation
         return None
 
-    def debug(self, faces: list[str], color: ColorLike="red"):
-        for face_id in faces:
-            self.debug_faces[face_id] = color
+    def debug(self, face_hashes: list[int], color: ColorLike="red"):
+        for face_hash in face_hashes:
+            self.debug_faces[face_hash] = color
 
     def mutate(self, name: str, obj: _.Part, color: ColorLike|None, debug: bool) -> Operation:
         self.object = obj
@@ -75,8 +75,8 @@ class Part:
         opr = Operation(obj, last_operation, name, len(self.operations), color)
 
         if debug:
-            for face_id in opr.faces_added:
-                self.debug_faces[face_id] = color
+            for face_hash in opr.faces_added:
+                self.debug_faces[face_hash] = color
 
         self.operations.append(opr)
         return opr
@@ -91,23 +91,23 @@ class Part:
             return part.operations[-1].color
         return None
 
-    def move(self, location: _.Location, color: str|None=None, debug=False) -> Operation:
+    def move(self, location: _.Location, color: ColorLike|None=None, debug=False) -> Operation:
         obj = location * self.object
         return self.mutate('add', obj, color, debug)
 
-    def add(self, part: Part|_.Part, color: str|None=None, debug=False) -> Operation:
+    def add(self, part: Part|_.Part, color: ColorLike|None=None, debug=False) -> Operation:
         obj = self.object + self.cast_part(part)
         return self.mutate('add', obj, color or self.part_color(part), debug)
 
-    def sub(self, part: Part|_.Part, color: str|None=None, debug=False) -> Operation:
+    def sub(self, part: Part|_.Part, color: ColorLike|None=None, debug=False) -> Operation:
         obj = self.object - self.cast_part(part)
         return self.mutate('sub', obj, color or self.part_color(part), debug)
 
-    def fillet(self, edge_list: Iterable[_.Edge], radius: float, color: str|None=None, debug=False) -> Operation:
+    def fillet(self, edge_list: Iterable[_.Edge], radius: float, color: ColorLike|None=None, debug=False) -> Operation:
         obj = self.object.fillet(radius, edge_list)
         return self.mutate('fillet', obj, color, debug)
 
-    def chamfer(self, edge_list: Iterable[_.Edge], length: float, length2: float|None=None, face: _.Face|None=None, color: str|None=None, debug=False) -> Operation:
+    def chamfer(self, edge_list: Iterable[_.Edge], length: float, length2: float|None=None, face: _.Face|None=None, color: ColorLike|None=None, debug=False) -> Operation:
         obj = self.object.chamfer(length, length2, edge_list, face)
         return self.mutate('chamfer', obj, color, debug)
 

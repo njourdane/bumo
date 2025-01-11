@@ -1,6 +1,14 @@
 from typing import TypeAlias
+from enum import Enum
 
 import build123d as _
+
+
+class ShapeState(Enum):
+    added = 1
+    altered = 2
+    untouched = 3
+    removed = 4
 
 
 ColorLike: TypeAlias = (
