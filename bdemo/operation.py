@@ -30,8 +30,6 @@ class Operation:
 
         self.vertices = {self.hash_shape(v): v for v in obj.vertices()}
 
-        self.shapes = {**self.faces, **self.edges}
-
     def __repr__(self):
         return self.id
 
@@ -72,12 +70,20 @@ class Operation:
         return hash(serialized)
 
     def filter_faces(self, state: ShapeState) -> dict[int, _.Face]:
-        faces = self.last_operation.faces if self.last_operation and state == ShapeState.removed else self.faces
-        return {fh: faces[fh] for fh, fs in self.faces_state.items() if fs == state}
+        faces = (
+            self.last_operation.faces
+            if self.last_operation and state == ShapeState.removed
+            else self.faces
+        )
+        return {h: faces[h] for h, s in self.faces_state.items() if s == state}
 
     def filter_edges(self, state: ShapeState) -> dict[int, _.Edge]:
-        edges = self.last_operation.edges if self.last_operation and state == ShapeState.removed else self.edges
-        return {eh: edges[eh] for eh, es in self.edges_state.items() if es == state}
+        edges = (
+            self.last_operation.edges
+            if self.last_operation and state == ShapeState.removed
+            else self.edges
+        )
+        return {h: edges[h] for h, e in self.edges_state.items() if e == state}
 
     def is_altered_face(self, face: _.Face):
         if not self.last_operation:

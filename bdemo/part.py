@@ -5,7 +5,7 @@ from typing import Iterable
 import build123d as _
 
 from .operation import Operation
-from .utils import ColorLike, to_color
+from .utils import ColorLike, to_color, FaceList
 
 
 class Part:
@@ -65,7 +65,7 @@ class Part:
                 return operation
         return None
 
-    def debug(self, face_hashes: list[int], color: ColorLike="red"):
+    def debug(self, face_hashes: dict[int, _.Face], color: ColorLike="red"):
         for face_hash in face_hashes:
             self.debug_faces[face_hash] = color
 
@@ -80,6 +80,10 @@ class Part:
 
         self.operations.append(opr)
         return opr
+
+    @classmethod
+    def cast_edges(cls, edges: FaceList) -> Iterable[_.Edge]:
+        return edges.values() if isinstance(edges, dict) else edges
 
     @classmethod
     def cast_part(cls, part: Part|_.Part) -> _.Part:
@@ -103,12 +107,12 @@ class Part:
         obj = self.object - self.cast_part(part)
         return self.mutate('sub', obj, color or self.part_color(part), debug)
 
-    def fillet(self, edge_list: Iterable[_.Edge], radius: float, color: ColorLike|None=None, debug=False) -> Operation:
-        obj = self.object.fillet(radius, edge_list)
+    def fillet(self, edge_list: FaceList, radius: float, color: ColorLike|None=None, debug=False) -> Operation:
+        obj = self.object.fillet(radius, self.cast_edges(edge_list))
         return self.mutate('fillet', obj, color, debug)
 
-    def chamfer(self, edge_list: Iterable[_.Edge], length: float, length2: float|None=None, face: _.Face|None=None, color: ColorLike|None=None, debug=False) -> Operation:
-        obj = self.object.chamfer(length, length2, edge_list, face)
+    def chamfer(self, edge_list: FaceList, length: float, length2: float|None=None, face: _.Face|None=None, color: ColorLike|None=None, debug=False) -> Operation:
+        obj = self.object.chamfer(length, length2, self.cast_edges(edge_list), face)
         return self.mutate('chamfer', obj, color, debug)
 
     def export(self, exporter: _.Export2D, file_path: PathLike|bytes|str, include_part=True):

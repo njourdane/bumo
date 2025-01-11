@@ -1,15 +1,10 @@
-from typing import TypeAlias
+from typing import TypeAlias, Iterable
 from enum import Enum
 
 import build123d as _
 
 
-class ShapeState(Enum):
-    added = 1
-    altered = 2
-    untouched = 3
-    removed = 4
-
+FaceList = dict[int, _.Edge] | Iterable[_.Edge]
 
 ColorLike: TypeAlias = (
     _.Color | # build123d color
@@ -21,6 +16,14 @@ ColorLike: TypeAlias = (
     int | # hexa, ex: 0xff0000
     tuple[int, int] # hexa + alpha, ex: (0xff0000, 0x80)
 )
+
+
+class ShapeState(Enum):
+    added = 1
+    altered = 2
+    untouched = 3
+    removed = 4
+
 
 def to_color(color: ColorLike) -> _.Color:
     return color if isinstance(color, _.Color) else _.Color(color)
