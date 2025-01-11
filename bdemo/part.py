@@ -64,6 +64,8 @@ class Part:
             rem_colors = {faces_color[rm_hash] for rm_hash in opr.faces_removed}
             if len(rem_colors) > 1:
                 for rm_hash, rm_face in opr.faces_removed.items():
+                    if faces_color[rm_hash] not in rem_colors:
+                        continue
                     assert opr.previous
                     if not opr.previous.is_altered_face(rm_face):
                         rem_colors.remove(faces_color[rm_hash])
