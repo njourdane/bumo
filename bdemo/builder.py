@@ -5,7 +5,7 @@ from typing import Iterable
 import build123d as _
 
 from .operation import Operation
-from .utils import ColorLike, to_color, FaceList, Hash
+from .utils import ColorLike, to_color, EdgeListLike, Hash, EdgeDict
 
 
 class Builder:
@@ -113,8 +113,13 @@ class Builder:
         return opr
 
     @classmethod
-    def cast_edges(cls, edges: FaceList) -> Iterable[_.Edge]:
-        return edges.values() if isinstance(edges, dict) else edges
+    def cast_edges(cls, edges: EdgeListLike) -> Iterable[_.Edge]:
+        if isinstance(edges, EdgeDict):
+            return edges()
+        elif isinstance(edges, _.Edge):
+            return [edges]
+        else:
+            return edges
 
     @classmethod
     def cast_part(cls, part: Builder|_.Part) -> _.Part:
@@ -145,11 +150,11 @@ class Builder:
         obj = self.object - self.cast_part(part)
         return self.mutate('sub', obj, color or self.part_color(part), debug)
 
-    def fillet(self, edge_list: FaceList, radius: float, color: ColorLike|None=None, debug=False) -> Operation:
+    def fillet(self, edge_list: EdgeListLike, radius: float, color: ColorLike|None=None, debug=False) -> Operation:
         obj = self.object.fillet(radius, self.cast_edges(edge_list))
         return self.mutate('fillet', obj, color, debug)
 
-    def chamfer(self, edge_list: FaceList, length: float, length2: float|None=None, face: _.Face|None=None, color: ColorLike|None=None, debug=False) -> Operation:
+    def chamfer(self, edge_list: EdgeListLike, length: float, length2: float|None=None, face: _.Face|None=None, color: ColorLike|None=None, debug=False) -> Operation:
         obj = self.object.chamfer(length, length2, self.cast_edges(edge_list), face)
         return self.mutate('chamfer', obj, color, debug)
 

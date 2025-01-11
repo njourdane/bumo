@@ -3,7 +3,7 @@ from hashlib import md5
 
 import build123d as _
 
-from .utils import ColorLike, ShapeState, Hash
+from .utils import ColorLike, ShapeState, Hash, FaceDict, EdgeDict
 
 
 class Operation:
@@ -24,14 +24,14 @@ class Operation:
 
         self.id = f"{ name }-{ index }"
 
-        self.faces = {self.hash_shape(f): f for f in obj.faces()}
+        self.faces = FaceDict({self.hash_shape(f): f for f in obj.faces()})
         self.faces_state = self.get_faces_state()
         self.faces_added = self.filter_faces(ShapeState.added)
         self.faces_altered = self.filter_faces(ShapeState.altered)
         self.faces_untouched = self.filter_faces(ShapeState.untouched)
         self.faces_removed = self.filter_faces(ShapeState.removed)
 
-        self.edges = {self.hash_shape(e): e for e in obj.edges()}
+        self.edges = EdgeDict({self.hash_shape(e): e for e in obj.edges()})
         self.edges_state = self.get_edges_state()
         self.edges_added = self.filter_edges(ShapeState.added)
         self.edges_altered = self.filter_edges(ShapeState.altered)
@@ -82,21 +82,23 @@ class Operation:
 
         return md5(str(serialized).encode()).hexdigest()
 
-    def filter_faces(self, state: ShapeState) -> dict[Hash, _.Face]:
+    def filter_faces(self, state: ShapeState) -> FaceDict:
         faces = (
             self.previous.faces
             if self.previous and state == ShapeState.removed
             else self.faces
         )
-        return {h: faces[h] for h, s in self.faces_state.items() if s == state}
+        faces = {h: faces[h] for h, s in self.faces_state.items() if s == state}
+        return FaceDict(faces)
 
-    def filter_edges(self, state: ShapeState) -> dict[Hash, _.Edge]:
+    def filter_edges(self, state: ShapeState) -> EdgeDict:
         edges = (
             self.previous.edges
             if self.previous and state == ShapeState.removed
             else self.edges
         )
-        return {h: edges[h] for h, e in self.edges_state.items() if e == state}
+        edges = {h: edges[h] for h, e in self.edges_state.items() if e == state}
+        return EdgeDict(edges)
 
     @classmethod
     def is_altered_faces(cls, this_face: _.Face, that_face: _.Face):
