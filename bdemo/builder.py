@@ -8,7 +8,7 @@ from .operation import Operation
 from .utils import ColorLike, to_color, FaceList, Hash
 
 
-class Part:
+class Builder:
     debug_alpha = 0.2
     default_color: ColorLike = "orange"
 
@@ -31,8 +31,8 @@ class Part:
 
         return list(faces.values())
 
-    def __mul__(self, location: _.Location) -> Part:
-        return Part(location * self.object)
+    def __mul__(self, location: _.Location) -> Builder:
+        return Builder(location * self.object)
 
     def get_face_operation(self, face: _.Face|Hash) -> Operation:
         _hash = Operation.hash_shape(face) if isinstance(face, _.Face) else face
@@ -117,12 +117,12 @@ class Part:
         return edges.values() if isinstance(edges, dict) else edges
 
     @classmethod
-    def cast_part(cls, part: Part|_.Part) -> _.Part:
+    def cast_part(cls, part: Builder|_.Part) -> _.Part:
         return part if isinstance(part, _.Part) else part.object
 
     @classmethod
-    def part_color(cls, part: Part|_.Part) -> ColorLike|None:
-        if isinstance(part, Part) and len(part.operations) == 1:
+    def part_color(cls, part: Builder|_.Part) -> ColorLike|None:
+        if isinstance(part, Builder) and len(part.operations) == 1:
             return part.operations[-1].color
         return None
 
@@ -137,11 +137,11 @@ class Part:
 
         return self.mutate('move', obj, color, debug, faces_alias)
 
-    def add(self, part: Part|_.Part, color: ColorLike|None=None, debug=False) -> Operation:
+    def add(self, part: Builder|_.Part, color: ColorLike|None=None, debug=False) -> Operation:
         obj = self.object + self.cast_part(part)
         return self.mutate('add', obj, color or self.part_color(part), debug)
 
-    def sub(self, part: Part|_.Part, color: ColorLike|None=None, debug=False) -> Operation:
+    def sub(self, part: Builder|_.Part, color: ColorLike|None=None, debug=False) -> Operation:
         obj = self.object - self.cast_part(part)
         return self.mutate('sub', obj, color or self.part_color(part), debug)
 

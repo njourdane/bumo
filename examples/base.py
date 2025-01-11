@@ -1,9 +1,9 @@
 import build123d as _
-from bdemo.part import Part
+from bdemo.builder import Builder
 
-Part.default_color = "grey"
+Builder.default_color = "grey"
 
-obj = Part(_.Box(9, 9, 3), color="orange")
+obj = Builder(_.Box(9, 9, 3), color="orange")
 # obj.move(_.Location([3, 0, 0]) * _.Rotation(15, 0, 0))
 obj.add(_.Box(6, 6, 6))
 obj.add(_.Box(3, 3, 9), color="green")
@@ -15,5 +15,5 @@ for operation in obj.operations:
     print(operation)
 
 if __name__ == "__main__":
-    import ocp_vscode as ov
-    ov.show_object(obj(), clear=True, tools=False, glass=False, black_edges=True)
+    from ocp_vscode import show_object
+    show_object(obj(), clear=True, tools=False, glass=False, black_edges=True)
