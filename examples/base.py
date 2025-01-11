@@ -1,16 +1,15 @@
 import build123d as _
 from bdemo.part import Part
 
-Part.default_color = "red"
+Part.default_color = "grey"
 
 obj = Part(_.Box(9, 9, 3), color="orange")
 # obj.move(_.Location([3, 0, 0]) * _.Rotation(15, 0, 0))
 obj.add(_.Box(6, 6, 6))
 obj.add(_.Box(3, 3, 9), color="green")
-obj.sub(_.Cylinder(1, 9), color="blue")
-
-# for face_hash, face in obj[-1].faces.items():
-#     print(obj.get_face_operation(face), face_hash)
+hole = obj.sub(_.Cylinder(1, 9), color="blue")
+obj.chamfer(hole.edges_added, 0.2, color="pink")
+# obj.chamfer([list(hole.edges_added.values())[0]], 0.2, color="pink")
 
 for operation in obj.operations:
     print(operation)

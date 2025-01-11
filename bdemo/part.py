@@ -61,18 +61,17 @@ class Part:
 
                 faces_color[face_hash] = color
 
-            rem_colors = {faces_color[rm_hash] for rm_hash in opr.faces_removed}
-            if len(rem_colors) > 1:
-                for rm_hash, rm_face in opr.faces_removed.items():
-                    if faces_color[rm_hash] not in rem_colors:
-                        continue
-                    assert opr.previous
-                    if not opr.previous.is_altered_face(rm_face):
-                        rem_colors.remove(faces_color[rm_hash])
+            rm_colors = {faces_color[rm_hash] for rm_hash in opr.faces_removed}
 
-            previous_color = rem_colors.pop() if len(rem_colors) == 1 else None
-            for face_hash in opr.faces_altered:
-                faces_color[face_hash] = previous_color
+            if len(rm_colors) == 1:
+                rm_color = rm_colors.pop() if len(rm_colors) == 1 else None
+                for face_hash in opr.faces_altered:
+                    faces_color[face_hash] = rm_color
+            else:
+                for al_hash, al_face in opr.faces_altered.items():
+                    for rm_hash, rm_face in opr.faces_removed.items():
+                        if Operation.is_altered_faces(al_face, rm_face):
+                            faces_color[al_hash] = faces_color[rm_hash]
 
         if self.debug_faces:
             for face_hash, color in faces_color.items():

@@ -98,6 +98,16 @@ class Operation:
         )
         return {h: edges[h] for h, e in self.edges_state.items() if e == state}
 
+    @classmethod
+    def is_altered_faces(cls, this_face: _.Face, that_face: _.Face):
+        for this_edge in this_face.edges():
+            this_hash = cls.hash_shape(this_edge)
+            for that_edge in that_face.edges():
+                if this_hash == cls.hash_shape(that_edge):
+                    return True
+
+        return False
+
     def is_altered_face(self, face: _.Face):
         if not self.previous:
             return True
