@@ -1,21 +1,22 @@
 from __future__ import annotations
+from hashlib import md5
 
 import build123d as _
 
-from .utils import ColorLike, ShapeState
+from .utils import ColorLike, ShapeState, Hash
 
 
 class Operation:
     def __init__(
         self,
         obj: _.Part,
-        last_operation: Operation|None,
+        previous: Operation|None,
         name: str,
         index: int,
         color: ColorLike|None,
-        faces_alias: dict[int, int]|None
+        faces_alias: dict[Hash, Hash]|None
     ) -> None:
-        self.last_operation = last_operation
+        self.previous = previous
         self.name = name
         self.index = index
         self.color = color
@@ -43,20 +44,23 @@ class Operation:
         return self.id
 
     @classmethod
-    def hash_shape(cls, shape: _.Shape) -> int:
+    def hash_shape(cls, shape: _.Shape) -> Hash:
         """
         Return a reproducible hash.
         OCP 7.2 might produce better hashes that could make this unnecessary.
         """
 
+        def to_int(number: float) -> int:
+            return int(number * 1000)
+
         def serialize_vertex(vertex: _.Vertex) -> tuple:
-            return vertex.to_tuple()
+            return tuple(to_int(v) for v in vertex.to_tuple())
 
         def serialize_edge(edge: _.Edge) -> tuple:
             return (
                 edge.geom_type,
                 tuple(serialize_vertex(vertex) for vertex in edge.vertices()),
-                edge.radius if edge.geom_type == _.GeomType.CIRCLE else 0
+                to_int(edge.radius) if edge.geom_type == _.GeomType.CIRCLE else 0
             )
 
         def serialize_face(face: _.Face) -> tuple:
@@ -76,40 +80,40 @@ class Operation:
         else:
             raise TypeError
 
-        return hash(serialized)
+        return md5(str(serialized).encode()).hexdigest()
 
-    def filter_faces(self, state: ShapeState) -> dict[int, _.Face]:
+    def filter_faces(self, state: ShapeState) -> dict[Hash, _.Face]:
         faces = (
-            self.last_operation.faces
-            if self.last_operation and state == ShapeState.removed
+            self.previous.faces
+            if self.previous and state == ShapeState.removed
             else self.faces
         )
         return {h: faces[h] for h, s in self.faces_state.items() if s == state}
 
-    def filter_edges(self, state: ShapeState) -> dict[int, _.Edge]:
+    def filter_edges(self, state: ShapeState) -> dict[Hash, _.Edge]:
         edges = (
-            self.last_operation.edges
-            if self.last_operation and state == ShapeState.removed
+            self.previous.edges
+            if self.previous and state == ShapeState.removed
             else self.edges
         )
         return {h: edges[h] for h, e in self.edges_state.items() if e == state}
 
     def is_altered_face(self, face: _.Face):
-        if not self.last_operation:
+        if not self.previous:
             return True
 
         for edge in face.edges():
-            if self.hash_shape(edge) in self.last_operation.edges:
+            if self.hash_shape(edge) in self.previous.edges:
                 return True
 
         return False
 
-    def get_faces_state(self) -> dict[int, ShapeState]:
-        def get_state(face_hash: int, face: _.Face) -> ShapeState:
-            if not self.last_operation:
+    def get_faces_state(self) -> dict[Hash, ShapeState]:
+        def get_state(face_hash: Hash, face: _.Face) -> ShapeState:
+            if not self.previous:
                 return ShapeState.added
 
-            if face_hash in self.last_operation.faces:
+            if face_hash in self.previous.faces:
                 return ShapeState.untouched
 
             if self.is_altered_face(face):
@@ -119,29 +123,29 @@ class Operation:
 
         faces = {fh: get_state(fh, face) for fh, face in self.faces.items()}
 
-        if self.last_operation:
-            for face_hash in self.last_operation.faces:
+        if self.previous:
+            for face_hash in self.previous.faces:
                 if face_hash not in self.faces:
                     faces[face_hash] = ShapeState.removed
 
         return faces
 
     def is_altered_edge(self, edge: _.Edge):
-        if not self.last_operation:
+        if not self.previous:
             return True
 
         for vertex in edge.vertices():
-            if self.hash_shape(vertex) in self.last_operation.vertices:
+            if self.hash_shape(vertex) in self.previous.vertices:
                 return True
 
         return False
 
-    def get_edges_state(self) -> dict[int, ShapeState]:
-        def get_state(edge_hash: int, edge: _.Edge) -> ShapeState:
-            if not self.last_operation:
+    def get_edges_state(self) -> dict[Hash, ShapeState]:
+        def get_state(edge_hash: Hash, edge: _.Edge) -> ShapeState:
+            if not self.previous:
                 return ShapeState.added
 
-            if edge_hash in self.last_operation.edges:
+            if edge_hash in self.previous.edges:
                 return ShapeState.untouched
 
             if self.is_altered_edge(edge):
@@ -151,8 +155,8 @@ class Operation:
 
         edges = {eh: get_state(eh, edge) for eh, edge in self.edges.items()}
 
-        if self.last_operation:
-            for edge_hash in self.last_operation.edges:
+        if self.previous:
+            for edge_hash in self.previous.edges:
                 if edge_hash not in self.edges:
                     edges[edge_hash] = ShapeState.removed
 

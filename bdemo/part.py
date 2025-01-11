@@ -5,7 +5,7 @@ from typing import Iterable
 import build123d as _
 
 from .operation import Operation
-from .utils import ColorLike, to_color, FaceList
+from .utils import ColorLike, to_color, FaceList, Hash
 
 
 class Part:
@@ -15,7 +15,7 @@ class Part:
     def __init__(self, part: _.Part, color: ColorLike|None=None, debug=False):
         self.object = part
         self.operations: list[Operation] = []
-        self.debug_faces: dict[int, ColorLike] = {}
+        self.debug_faces: dict[Hash, ColorLike] = {}
         self.mutate(self.__class__.__name__, part, color, debug)
 
     def __getitem__(self, opr_idx: int):
@@ -27,29 +27,29 @@ class Part:
 
         for face_hash, face in faces.items():
             face.color = faces_color[face_hash] or self.default_color
-            face.label = hex(face_hash)[2:]
+            face.label = face_hash[:6]
 
         return list(faces.values())
 
     def __mul__(self, location: _.Location) -> Part:
         return Part(location * self.object)
 
-    def get_face_operation(self, face: _.Face|int) -> Operation:
+    def get_face_operation(self, face: _.Face|Hash) -> Operation:
         _hash = Operation.hash_shape(face) if isinstance(face, _.Face) else face
         for operation in self.operations:
             if _hash in operation.faces:
                 return operation
         raise ValueError
 
-    def get_edge_operation(self, edge: _.Edge|int) -> Operation:
+    def get_edge_operation(self, edge: _.Edge|Hash) -> Operation:
         _hash = Operation.hash_shape(edge) if isinstance(edge, _.Edge) else edge
         for operation in self.operations:
             if _hash in operation.edges:
                 return operation
         raise ValueError
 
-    def get_faces_color(self) -> dict[int, ColorLike|None]:
-        faces_color: dict[int, ColorLike|None] = {}
+    def get_faces_color(self) -> dict[Hash, ColorLike|None]:
+        faces_color: dict[Hash, ColorLike|None] = {}
 
         for opr in self.operations:
 
@@ -64,8 +64,8 @@ class Part:
             rem_colors = {faces_color[rm_hash] for rm_hash in opr.faces_removed}
             if len(rem_colors) > 1:
                 for rm_hash, rm_face in opr.faces_removed.items():
-                    assert opr.last_operation
-                    if not opr.last_operation.is_altered_face(rm_face):
+                    assert opr.previous
+                    if not opr.previous.is_altered_face(rm_face):
                         rem_colors.remove(faces_color[rm_hash])
 
             previous_color = rem_colors.pop() if len(rem_colors) == 1 else None
@@ -88,11 +88,11 @@ class Part:
                 return operation
         return None
 
-    def debug(self, face_hashes: dict[int, _.Face], color: ColorLike="red"):
+    def debug(self, face_hashes: dict[Hash, _.Face], color: ColorLike="red"):
         for face_hash in face_hashes:
             self.debug_faces[face_hash] = color
 
-    def mutate(self, name: str, obj: _.Part, color: ColorLike|None, debug: bool, faces_alias: dict[int, int]|None=None) -> Operation:
+    def mutate(self, name: str, obj: _.Part, color: ColorLike|None, debug: bool, faces_alias: dict[Hash, Hash]|None=None) -> Operation:
         self.object = obj
 
         opr = Operation(
@@ -128,7 +128,7 @@ class Part:
     def move(self, location: _.Location, color: ColorLike|None=None, debug=False) -> Operation:
         obj = location * self.object
 
-        faces_alias: dict[int, int] = {}
+        faces_alias: dict[Hash, Hash] = {}
         for face in self.object.faces():
             old_hash = Operation.hash_shape(face)
             new_hash = Operation.hash_shape(location * face)

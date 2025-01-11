@@ -3,8 +3,9 @@ from enum import Enum
 
 import build123d as _
 
+Hash: TypeAlias = str
 
-FaceList = dict[int, _.Edge] | Iterable[_.Edge]
+FaceList = dict[Hash, _.Edge] | Iterable[_.Edge]
 
 ColorLike: TypeAlias = (
     _.Color | # build123d color
