@@ -17,6 +17,9 @@ class Part:
         self.debug_faces: dict[int, ColorLike] = {}
         self.mutate(self.__class__.__name__, part, color, debug)
 
+    def __getitem__(self, opr_idx: int):
+        return self.operations[opr_idx]
+
     def __call__(self) -> list[_.Face]:
         faces = self.operations[-1].faces
         faces_color = self.get_faces_color()
@@ -29,6 +32,18 @@ class Part:
 
     def __mul__(self, location: _.Location) -> Part:
         return Part(location * self.object)
+
+    def get_all_faces(self) -> dict[int, _.Face]:
+        faces: dict[int, _.Face] = {}
+        for operation in self.operations:
+            faces = {**faces, **operation.faces}
+        return faces
+
+    def get_all_edges(self) -> dict[int, _.Edge]:
+        edges: dict[int, _.Edge] = {}
+        for operation in self.operations:
+            edges = {**edges, **operation.edges}
+        return edges
 
     def get_faces_color(self) -> dict[int, ColorLike|None]:
         faces_color: dict[int, ColorLike|None] = {}
@@ -59,9 +74,9 @@ class Part:
 
         return faces_color
 
-    def get_operation(self, op_id: str) -> Operation|None:
+    def get_operation(self, opr_id: str) -> Operation|None:
         for operation in self.operations:
-            if operation.id == op_id:
+            if operation.id == opr_id:
                 return operation
         return None
 

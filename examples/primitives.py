@@ -8,6 +8,7 @@ g = obj.add(Box(3, 3, 9, color="green"))
 hole = obj.sub(Cylinder(1, 9, color="blue"))
 obj.chamfer(hole.edges_added, 0.2, color="pink") #, debug=True)
 
+# print(obj[-1].edges_removed)
 for operation in obj.operations:
     print(operation)
 
