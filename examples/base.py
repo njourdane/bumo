@@ -1,10 +1,12 @@
 import build123d as _
 from bdemo.part import Part
 
+Part.default_color = "red"
+
 obj = Part(_.Box(9, 9, 3), color="orange")
 # obj.move(_.Location([3, 0, 0]), color="orange")
 # obj.move(_.Rotation(15, 0, 0), color="orange")
-obj.add(_.Box(6, 6, 6), color="red")
+obj.add(_.Box(6, 6, 6))
 obj.add(_.Box(3, 3, 9), color="green")
 obj.sub(_.Cylinder(1, 9), color="blue")
 

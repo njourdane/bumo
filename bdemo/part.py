@@ -10,6 +10,7 @@ from .utils import ColorLike, to_color, FaceList
 
 class Part:
     debug_alpha = 0.2
+    default_color: ColorLike = "orange"
 
     def __init__(self, part: _.Part, color: ColorLike|None=None, debug=False):
         self.object = part
@@ -25,7 +26,7 @@ class Part:
         faces_color = self.get_faces_color()
 
         for face_hash, face in faces.items():
-            face.color = faces_color[face_hash]
+            face.color = faces_color[face_hash] or self.default_color
             face.label = hex(face_hash)[2:]
 
         return list(faces.values())
