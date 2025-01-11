@@ -8,6 +8,9 @@ obj.add(_.Box(6, 6, 6), color="red")
 obj.add(_.Box(3, 3, 9), color="green")
 obj.sub(_.Cylinder(1, 9), color="blue")
 
+# for face_hash, face in obj[-1].faces.items():
+#     print(obj.get_face_operation(face), face_hash)
+
 for operation in obj.operations:
     print(operation)
 

@@ -33,17 +33,19 @@ class Part:
     def __mul__(self, location: _.Location) -> Part:
         return Part(location * self.object)
 
-    def get_all_faces(self) -> dict[int, _.Face]:
-        faces: dict[int, _.Face] = {}
+    def get_face_operation(self, face: _.Face|int) -> Operation:
+        face_hash = Operation.hash_shape(face) if isinstance(face, _.Face) else face
         for operation in self.operations:
-            faces = {**faces, **operation.faces}
-        return faces
+            if face_hash in operation.faces:
+                return operation
+        raise ValueError
 
-    def get_all_edges(self) -> dict[int, _.Edge]:
-        edges: dict[int, _.Edge] = {}
+    def get_edge_operation(self, edge: _.Edge|int) -> Operation:
+        edge_hash = Operation.hash_shape(edge) if isinstance(edge, _.Edge) else edge
         for operation in self.operations:
-            edges = {**edges, **operation.edges}
-        return edges
+            if edge_hash in operation.edges:
+                return operation
+        raise ValueError
 
     def get_faces_color(self) -> dict[int, ColorLike|None]:
         faces_color: dict[int, ColorLike|None] = {}
