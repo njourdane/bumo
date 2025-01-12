@@ -229,6 +229,18 @@ class Builder:
         obj = self.object - self._cast_part(part)
         return self.mutate('sub', obj, color or self._part_color(part), debug)
 
+    def intersect(
+            self,
+            part: Builder|_.Part,
+            color: ColorLike|None=None,
+            debug=False
+        ) -> Mutation:
+        """Mutation: intersects the given part to the current object,
+        with the given color and debug mode."""
+
+        obj = self.object & self._cast_part(part)
+        return self.mutate('inter', obj, color or self._part_color(part), debug)
+
     def fillet(
             self,
             edges: EdgeListLike,
