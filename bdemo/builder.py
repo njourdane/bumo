@@ -1,3 +1,4 @@
+"""Module containing the Builder class."""
 from __future__ import annotations
 from os import PathLike
 from typing import Iterable
@@ -10,6 +11,9 @@ from .shapes import EdgeListLike, EdgeDict, FaceDict
 
 
 class Builder:
+    """A class used to manipulated Build123d objects that keeps track of each
+    performed operation and manage shape colors."""
+
     debug_alpha = 0.2
     default_color: ColorLike = "orange"
 
@@ -36,6 +40,8 @@ class Builder:
         return Builder(location * self.object)
 
     def get_face_operation(self, face: _.Face|Hash) -> Operation:
+        """Retrieve the operation who created the given face."""
+
         _hash = Operation.hash_shape(face) if isinstance(face, _.Face) else face
         for operation in self.operations:
             if _hash in operation.faces:
@@ -43,6 +49,8 @@ class Builder:
         raise ValueError
 
     def get_edge_operation(self, edge: _.Edge|Hash) -> Operation:
+        """Retrieve the operation who created the given edge."""
+
         _hash = Operation.hash_shape(edge) if isinstance(edge, _.Edge) else edge
         for operation in self.operations:
             if _hash in operation.edges:
@@ -50,6 +58,9 @@ class Builder:
         raise ValueError
 
     def get_faces_color(self) -> dict[Hash, ColorLike|None]:
+        """Return a dictionnary containing the color of each face of the current
+        object."""
+
         faces_color: dict[Hash, ColorLike|None] = {}
 
         for opr in self.operations:
@@ -85,17 +96,24 @@ class Builder:
         return faces_color
 
     def get_operation(self, opr_id: str) -> Operation|None:
+        """Return the operation identified by the given operation id."""
+
         for operation in self.operations:
             if operation.id == opr_id:
                 return operation
         return None
 
     def debug(self, faces: FaceDict, color: ColorLike="red"):
+        """Set a face for debugging, so it will appear in the given color while
+        the rest of the object will be translucide."""
+
         for face_hash in faces:
             self.debug_faces[face_hash] = color
 
     @classmethod
     def _cast_edges(cls, edges: EdgeListLike) -> Iterable[_.Edge]:
+        """Cast an EdgeListLike to a Edge iterable."""
+
         if isinstance(edges, EdgeDict):
             return edges()
         if isinstance(edges, _.Edge):
@@ -104,14 +122,18 @@ class Builder:
 
     @classmethod
     def _cast_part(cls, part: Builder|_.Part) -> _.Part:
+        """Cast an EdgeListLike to a Edge iterable."""
         return part if isinstance(part, _.Part) else part.object
 
     @classmethod
     def cast_color(cls, color: ColorLike) -> _.Color:
+        """Cast a ColorLike to a Color"""
         return color if isinstance(color, _.Color) else _.Color(color)
 
     @classmethod
     def _part_color(cls, part: Builder|_.Part) -> ColorLike|None:
+        """Retrieve the color of the current object."""
+
         if isinstance(part, Builder) and len(part.operations) == 1:
             return part.operations[-1].color
         return None
@@ -124,6 +146,9 @@ class Builder:
             debug: bool,
             faces_alias: dict[Hash, Hash]|None=None
         ) -> Operation:
+        """Base mutation: mutate the current object to the given one by applying
+        an operation with the given name, color and debug mode."""
+
         self.object = obj
 
         opr = Operation(
@@ -143,6 +168,10 @@ class Builder:
         return opr
 
     def move(self, location: _.Location, color: ColorLike|None=None, debug=False) -> Operation:
+        """Mutation: move the object to the given location, keeping the colors.
+        with the given color and debug mode.
+        If not color is defined, keep the previous ones for each face."""
+
         obj = location * self.object
         faces_alias: dict[Hash, Hash] = {}
 
@@ -159,6 +188,9 @@ class Builder:
             color: ColorLike|None=None,
             debug=False
         ) -> Operation:
+        """Mutation: fuse the given part to the current object.
+        with the given color and debug mode."""
+
         obj = self.object + self._cast_part(part)
         return self.mutate('add', obj, color or self._part_color(part), debug)
 
@@ -168,6 +200,9 @@ class Builder:
             color: ColorLike|None=None,
             debug=False
         ) -> Operation:
+        """Mutation: substract the given part from the current object,
+        with the given color and debug mode."""
+
         obj = self.object - self._cast_part(part)
         return self.mutate('sub', obj, color or self._part_color(part), debug)
 
@@ -178,6 +213,9 @@ class Builder:
             color: ColorLike|None=None,
             debug=False
         ) -> Operation:
+        """Mutation: apply a fillet of the given radius to the given edges of
+        the current object, with the given color and debug mode."""
+
         obj = self.object.fillet(radius, self._cast_edges(edge_list))
         return self.mutate('fillet', obj, color, debug)
 
@@ -190,6 +228,9 @@ class Builder:
             color: ColorLike|None=None,
             debug=False
         ) -> Operation:
+        """Mutation: apply a chamfer of the given length to the given edges of
+        the current object, with the given color and debug mode."""
+
         edges = self._cast_edges(edge_list)
         obj = self.object.chamfer(length, length2, edges, face) # type: ignore
         return self.mutate('chamfer', obj, color, debug)
@@ -200,6 +241,9 @@ class Builder:
             file_path: PathLike|bytes|str,
             include_part=True
         ):
+        """Export the current object using the given exporter in the given file
+        path. If `include_part` is false, do not include the object."""
+
         if include_part:
             exporter.add_shape(self.object) # type: ignore
         exporter.write(file_path) # type: ignore
@@ -211,4 +255,6 @@ class Builder:
             angular_tolerance: float = 0.1,
             ascii_format: bool = False
         ):
+        """Export the current object in STL format to the given file path,
+        with the given tolerance, angular tolerance and ascii format mode."""
         _.export_stl(self.object, file_path, tolerance, angular_tolerance, ascii_format)

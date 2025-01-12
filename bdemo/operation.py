@@ -1,3 +1,4 @@
+"""Module containing the Operation class."""
 from __future__ import annotations
 from hashlib import md5
 
@@ -8,6 +9,8 @@ from .shapes import ShapeState, FaceDict, EdgeDict
 
 
 class Operation:
+    """Class managing the operation applied when mutating the object."""
+
     def __init__(
         self,
         obj: _.Part,
@@ -46,10 +49,8 @@ class Operation:
 
     @classmethod
     def hash_shape(cls, shape: _.Shape) -> Hash:
-        """
-        Return a reproducible hash.
-        OCP 7.2 might produce better hashes that could make this unnecessary.
-        """
+        """Return a reproducible hash.
+        OCP 7.2 might produce better hashes that could make this unnecessary."""
 
         def to_int(number: float) -> int:
             return int(number * 1000)
@@ -83,6 +84,8 @@ class Operation:
         return md5(str(serialized).encode()).hexdigest()
 
     def filter_faces(self, state: ShapeState) -> FaceDict:
+        """Return the faces of the current object that match the given state."""
+
         faces = (
             self.previous.faces
             if self.previous and state == ShapeState.REMOVED
@@ -92,6 +95,8 @@ class Operation:
         return FaceDict(faces)
 
     def filter_edges(self, state: ShapeState) -> EdgeDict:
+        """Return the edges of the current object that match the given state."""
+
         edges = (
             self.previous.edges
             if self.previous and state == ShapeState.REMOVED
@@ -102,6 +107,9 @@ class Operation:
 
     @classmethod
     def is_altered_faces(cls, this_face: _.Face, that_face: _.Face):
+        """Check if the two given faces were altered or not, by comparing the
+        edges of each face: if a similar edge is found, they are altered."""
+
         for this_edge in this_face.edges():
             this_hash = cls.hash_shape(this_edge)
             for that_edge in that_face.edges():
@@ -111,6 +119,9 @@ class Operation:
         return False
 
     def is_altered_face(self, face: _.Face):
+        """Check if the given face were altered, by comparing the edges of the
+        face: if a similar edge is found in the object, it is altered."""
+
         if not self.previous:
             return True
 
@@ -121,6 +132,8 @@ class Operation:
         return False
 
     def get_faces_state(self) -> dict[Hash, ShapeState]:
+        """Return a dictionnary holding the state of each face of the object."""
+
         def get_state(face_hash: Hash, face: _.Face) -> ShapeState:
             if not self.previous:
                 return ShapeState.ADDED
@@ -143,6 +156,9 @@ class Operation:
         return faces
 
     def is_altered_edge(self, edge: _.Edge):
+        """Check if the given edge were altered, by comparing the vertices of
+        the face: if a similar vertex is found in the object, it is altered."""
+
         if not self.previous:
             return True
 
@@ -153,6 +169,8 @@ class Operation:
         return False
 
     def get_edges_state(self) -> dict[Hash, ShapeState]:
+        """Return a dictionnary holding the state of each edge of the object."""
+
         def get_state(edge_hash: Hash, edge: _.Edge) -> ShapeState:
             if not self.previous:
                 return ShapeState.ADDED

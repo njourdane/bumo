@@ -1,3 +1,4 @@
+"""A module used to store utility stuff used in various other modules."""
 from typing import TypeAlias
 
 import build123d as _

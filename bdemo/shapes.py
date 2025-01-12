@@ -1,3 +1,4 @@
+"""A module used to store shapes-related stuff"""
 from enum import Enum
 from typing import TypeAlias, Iterable
 
@@ -7,6 +8,8 @@ from .utils import Hash
 
 
 class ShapeState(Enum):
+    """The possible states of a shape for an operation."""
+
     ADDED = 1
     ALTERED = 2
     UNTOUCHED = 3
@@ -14,6 +17,9 @@ class ShapeState(Enum):
 
 
 class EdgeDict(dict):
+    """A custom dictionnary used to store edges by their hash.
+    If the dict is called ie. `my_edges()`, a list is returned."""
+
     def __init__(self, edges_dict: dict[Hash, _.Edge]):
         super().__init__(edges_dict)
 
@@ -28,6 +34,9 @@ class EdgeDict(dict):
 
 
 class FaceDict(dict):
+    """A custom dictionnary used to store faces by their hash.
+    If the dict is called ie. `my_edges()`, a list is returned."""
+
     def __init__(self, faces_dict: dict[Hash, _.Face]):
         super().__init__(faces_dict)
 
