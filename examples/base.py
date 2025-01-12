@@ -1,5 +1,5 @@
 import build123d as _
-from bdemo import Builder
+from bumo import Builder
 
 Builder.default_color = "grey"
 

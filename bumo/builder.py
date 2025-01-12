@@ -15,7 +15,10 @@ class Builder:
     performed mutation and manage shape colors."""
 
     debug_alpha = 0.2
+    "The alpha values used for translucent shapes in debug mode."
+
     default_color: ColorLike = "orange"
+    "The default color to be used when a color is passed to a mutation"
 
     def __init__(self, part: _.Part, color: ColorLike|None=None, debug=False):
         self.object = part
@@ -105,7 +108,7 @@ class Builder:
 
     def debug(self, faces: FaceDict, color: ColorLike="red"):
         """Set a face for debugging, so it will appear in the given color while
-        the rest of the object will be translucide."""
+        the rest of the object will be translucent."""
 
         for face_hash in faces:
             self.debug_faces[face_hash] = color
