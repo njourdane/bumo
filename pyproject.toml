@@ -5,7 +5,7 @@ description = "BUild123d Mutables Objects"
 authors = ["Nathanaël Jourdane <njourdane@protonmail.com>"]
 license = "MIT"
 readme = "README.md"
-repository = "https://codeberg.org/roipoussiere/bdemo"
+repository = "https://codeberg.org/roipoussiere/bumo"
 keywords = ["cad", "build123d"]
 classifiers = [
     "Intended Audience :: Manufacturing",
