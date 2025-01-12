@@ -14,7 +14,3 @@ ColorLike: TypeAlias = (
     int | # hexa, ex: 0xff0000
     tuple[int, int] # hexa + alpha, ex: (0xff0000, 0x80)
 )
-
-
-def to_color(color: ColorLike) -> _.Color:
-    return color if isinstance(color, _.Color) else _.Color(color)

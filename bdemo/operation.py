@@ -27,17 +27,17 @@ class Operation:
 
         self.faces = FaceDict({self.hash_shape(f): f for f in obj.faces()})
         self.faces_state = self.get_faces_state()
-        self.faces_added = self.filter_faces(ShapeState.added)
-        self.faces_altered = self.filter_faces(ShapeState.altered)
-        self.faces_untouched = self.filter_faces(ShapeState.untouched)
-        self.faces_removed = self.filter_faces(ShapeState.removed)
+        self.faces_added = self.filter_faces(ShapeState.ADDED)
+        self.faces_altered = self.filter_faces(ShapeState.ALTERED)
+        self.faces_untouched = self.filter_faces(ShapeState.UNTOUCHED)
+        self.faces_removed = self.filter_faces(ShapeState.REMOVED)
 
         self.edges = EdgeDict({self.hash_shape(e): e for e in obj.edges()})
         self.edges_state = self.get_edges_state()
-        self.edges_added = self.filter_edges(ShapeState.added)
-        self.edges_altered = self.filter_edges(ShapeState.altered)
-        self.edges_untouched = self.filter_edges(ShapeState.untouched)
-        self.edges_removed = self.filter_edges(ShapeState.removed)
+        self.edges_added = self.filter_edges(ShapeState.ADDED)
+        self.edges_altered = self.filter_edges(ShapeState.ALTERED)
+        self.edges_untouched = self.filter_edges(ShapeState.UNTOUCHED)
+        self.edges_removed = self.filter_edges(ShapeState.REMOVED)
 
         self.vertices = {self.hash_shape(v): v for v in obj.vertices()}
 
@@ -58,11 +58,10 @@ class Operation:
             return tuple(to_int(v) for v in vertex.to_tuple())
 
         def serialize_edge(edge: _.Edge) -> tuple:
-            return (
-                edge.geom_type,
-                tuple(serialize_vertex(vertex) for vertex in edge.vertices()),
-                to_int(edge.radius) if edge.geom_type == _.GeomType.CIRCLE else 0
-            )
+            vertices = tuple(serialize_vertex(v) for v in edge.vertices())
+            is_circle = edge.geom_type == _.GeomType.CIRCLE
+            radius = to_int(edge.radius) if is_circle else 0
+            return (edge.geom_type, vertices, radius)
 
         def serialize_face(face: _.Face) -> tuple:
             return tuple(serialize_edge(edge) for edge in face.edges())
@@ -86,7 +85,7 @@ class Operation:
     def filter_faces(self, state: ShapeState) -> FaceDict:
         faces = (
             self.previous.faces
-            if self.previous and state == ShapeState.removed
+            if self.previous and state == ShapeState.REMOVED
             else self.faces
         )
         faces = {h: faces[h] for h, s in self.faces_state.items() if s == state}
@@ -95,7 +94,7 @@ class Operation:
     def filter_edges(self, state: ShapeState) -> EdgeDict:
         edges = (
             self.previous.edges
-            if self.previous and state == ShapeState.removed
+            if self.previous and state == ShapeState.REMOVED
             else self.edges
         )
         edges = {h: edges[h] for h, e in self.edges_state.items() if e == state}
@@ -124,22 +123,22 @@ class Operation:
     def get_faces_state(self) -> dict[Hash, ShapeState]:
         def get_state(face_hash: Hash, face: _.Face) -> ShapeState:
             if not self.previous:
-                return ShapeState.added
+                return ShapeState.ADDED
 
             if face_hash in self.previous.faces:
-                return ShapeState.untouched
+                return ShapeState.UNTOUCHED
 
             if self.is_altered_face(face):
-                return ShapeState.altered
+                return ShapeState.ALTERED
 
-            return ShapeState.added
+            return ShapeState.ADDED
 
         faces = {fh: get_state(fh, face) for fh, face in self.faces.items()}
 
         if self.previous:
             for face_hash in self.previous.faces:
                 if face_hash not in self.faces:
-                    faces[face_hash] = ShapeState.removed
+                    faces[face_hash] = ShapeState.REMOVED
 
         return faces
 
@@ -156,21 +155,21 @@ class Operation:
     def get_edges_state(self) -> dict[Hash, ShapeState]:
         def get_state(edge_hash: Hash, edge: _.Edge) -> ShapeState:
             if not self.previous:
-                return ShapeState.added
+                return ShapeState.ADDED
 
             if edge_hash in self.previous.edges:
-                return ShapeState.untouched
+                return ShapeState.UNTOUCHED
 
             if self.is_altered_edge(edge):
-                return ShapeState.altered
+                return ShapeState.ALTERED
 
-            return ShapeState.added
+            return ShapeState.ADDED
 
         edges = {eh: get_state(eh, edge) for eh, edge in self.edges.items()}
 
         if self.previous:
             for edge_hash in self.previous.edges:
                 if edge_hash not in self.edges:
-                    edges[edge_hash] = ShapeState.removed
+                    edges[edge_hash] = ShapeState.REMOVED
 
         return edges

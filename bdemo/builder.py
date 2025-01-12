@@ -5,8 +5,8 @@ from typing import Iterable
 import build123d as _
 
 from .operation import Operation
-from .utils import ColorLike, to_color, Hash
-from .shapes import EdgeListLike, EdgeDict
+from .utils import ColorLike, Hash
+from .shapes import EdgeListLike, EdgeDict, FaceDict
 
 
 class Builder:
@@ -79,7 +79,7 @@ class Builder:
                 if face_hash in self.debug_faces:
                     faces_color[face_hash] = self.debug_faces[face_hash]
                 else:
-                    r, v, b = to_color(color).to_tuple()[:3]
+                    r, v, b = self.cast_color(color).to_tuple()[:3]
                     faces_color[face_hash] = _.Color(r, v, b, self.debug_alpha)
 
         return faces_color
@@ -90,11 +90,40 @@ class Builder:
                 return operation
         return None
 
-    def debug(self, face_hashes: dict[Hash, _.Face], color: ColorLike="red"):
-        for face_hash in face_hashes:
+    def debug(self, faces: FaceDict, color: ColorLike="red"):
+        for face_hash in faces:
             self.debug_faces[face_hash] = color
 
-    def mutate(self, name: str, obj: _.Part, color: ColorLike|None, debug: bool, faces_alias: dict[Hash, Hash]|None=None) -> Operation:
+    @classmethod
+    def _cast_edges(cls, edges: EdgeListLike) -> Iterable[_.Edge]:
+        if isinstance(edges, EdgeDict):
+            return edges()
+        if isinstance(edges, _.Edge):
+            return [edges]
+        return edges
+
+    @classmethod
+    def _cast_part(cls, part: Builder|_.Part) -> _.Part:
+        return part if isinstance(part, _.Part) else part.object
+
+    @classmethod
+    def cast_color(cls, color: ColorLike) -> _.Color:
+        return color if isinstance(color, _.Color) else _.Color(color)
+
+    @classmethod
+    def _part_color(cls, part: Builder|_.Part) -> ColorLike|None:
+        if isinstance(part, Builder) and len(part.operations) == 1:
+            return part.operations[-1].color
+        return None
+
+    def mutate(
+            self,
+            name: str,
+            obj: _.Part,
+            color: ColorLike|None,
+            debug: bool,
+            faces_alias: dict[Hash, Hash]|None=None
+        ) -> Operation:
         self.object = obj
 
         opr = Operation(
@@ -113,29 +142,10 @@ class Builder:
         self.operations.append(opr)
         return opr
 
-    @classmethod
-    def cast_edges(cls, edges: EdgeListLike) -> Iterable[_.Edge]:
-        if isinstance(edges, EdgeDict):
-            return edges()
-        elif isinstance(edges, _.Edge):
-            return [edges]
-        else:
-            return edges
-
-    @classmethod
-    def cast_part(cls, part: Builder|_.Part) -> _.Part:
-        return part if isinstance(part, _.Part) else part.object
-
-    @classmethod
-    def part_color(cls, part: Builder|_.Part) -> ColorLike|None:
-        if isinstance(part, Builder) and len(part.operations) == 1:
-            return part.operations[-1].color
-        return None
-
     def move(self, location: _.Location, color: ColorLike|None=None, debug=False) -> Operation:
         obj = location * self.object
-
         faces_alias: dict[Hash, Hash] = {}
+
         for face in self.object.faces():
             old_hash = Operation.hash_shape(face)
             new_hash = Operation.hash_shape(location * face)
@@ -143,26 +153,62 @@ class Builder:
 
         return self.mutate('move', obj, color, debug, faces_alias)
 
-    def add(self, part: Builder|_.Part, color: ColorLike|None=None, debug=False) -> Operation:
-        obj = self.object + self.cast_part(part)
-        return self.mutate('add', obj, color or self.part_color(part), debug)
+    def add(
+            self,
+            part: Builder|_.Part,
+            color: ColorLike|None=None,
+            debug=False
+        ) -> Operation:
+        obj = self.object + self._cast_part(part)
+        return self.mutate('add', obj, color or self._part_color(part), debug)
 
-    def sub(self, part: Builder|_.Part, color: ColorLike|None=None, debug=False) -> Operation:
-        obj = self.object - self.cast_part(part)
-        return self.mutate('sub', obj, color or self.part_color(part), debug)
+    def sub(
+            self,
+            part: Builder|_.Part,
+            color: ColorLike|None=None,
+            debug=False
+        ) -> Operation:
+        obj = self.object - self._cast_part(part)
+        return self.mutate('sub', obj, color or self._part_color(part), debug)
 
-    def fillet(self, edge_list: EdgeListLike, radius: float, color: ColorLike|None=None, debug=False) -> Operation:
-        obj = self.object.fillet(radius, self.cast_edges(edge_list))
+    def fillet(
+            self,
+            edge_list: EdgeListLike,
+            radius: float,
+            color: ColorLike|None=None,
+            debug=False
+        ) -> Operation:
+        obj = self.object.fillet(radius, self._cast_edges(edge_list))
         return self.mutate('fillet', obj, color, debug)
 
-    def chamfer(self, edge_list: EdgeListLike, length: float, length2: float|None=None, face: _.Face|None=None, color: ColorLike|None=None, debug=False) -> Operation:
-        obj = self.object.chamfer(length, length2, self.cast_edges(edge_list), face)
+    def chamfer(
+            self,
+            edge_list: EdgeListLike,
+            length: float,
+            length2: float|None=None,
+            face: _.Face|None=None,
+            color: ColorLike|None=None,
+            debug=False
+        ) -> Operation:
+        edges = self._cast_edges(edge_list)
+        obj = self.object.chamfer(length, length2, edges, face) # type: ignore
         return self.mutate('chamfer', obj, color, debug)
 
-    def export(self, exporter: _.Export2D, file_path: PathLike|bytes|str, include_part=True):
+    def export(
+            self,
+            exporter: _.Export2D,
+            file_path: PathLike|bytes|str,
+            include_part=True
+        ):
         if include_part:
-            exporter.add_shape(self.object)
-        exporter.write(file_path)
+            exporter.add_shape(self.object) # type: ignore
+        exporter.write(file_path) # type: ignore
 
-    def export_stl(self, file_path: PathLike|bytes|str, tolerance: float = 0.001, angular_tolerance: float = 0.1, ascii_format: bool = False):
+    def export_stl(
+            self,
+            file_path: PathLike|bytes|str,
+            tolerance: float = 0.001,
+            angular_tolerance: float = 0.1,
+            ascii_format: bool = False
+        ):
         _.export_stl(self.object, file_path, tolerance, angular_tolerance, ascii_format)

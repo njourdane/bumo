@@ -1,16 +1,16 @@
-import build123d as _
 from enum import Enum
-
 from typing import TypeAlias, Iterable
+
+import build123d as _
 
 from .utils import Hash
 
 
 class ShapeState(Enum):
-    added = 1
-    altered = 2
-    untouched = 3
-    removed = 4
+    ADDED = 1
+    ALTERED = 2
+    UNTOUCHED = 3
+    REMOVED = 4
 
 
 class EdgeDict(dict):
