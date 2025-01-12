@@ -1,8 +1,10 @@
 """Module containing the Builder class."""
 from __future__ import annotations
 from os import PathLike
+from sys import stdout
 
 import build123d as _
+from tabulate import tabulate
 
 from .mutation import Mutation
 from .utils import ColorLike, Hash
@@ -256,6 +258,21 @@ class Builder:
         edges = self._cast_edges(edges, fake_hashes=True)()
         obj = self.object.chamfer(length, length2, edges, face) # type: ignore
         return self.mutate('chamfer', obj, color, debug)
+
+    def info(self, file=None, style="fancy_grid"):
+        """Print the list of mutations to the given file (stdout by default)."""
+
+        def row(mutation: Mutation) -> tuple[str, str, str, str]:
+            return (
+                str(mutation.index),
+                mutation.id,
+                mutation.name,
+                str(mutation.color),
+            )
+
+        headers=["Idx", "Id", "Type", "Color"]
+        table = [row(mutation) for mutation in self.mutations]
+        print(tabulate(table, headers, tablefmt=style), file=file or stdout)
 
     def debug(self, faces: FaceListLike, color: ColorLike="red"):
         """Set a face for debugging, so it will appear in the given color while

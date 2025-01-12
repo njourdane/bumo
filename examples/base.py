@@ -7,8 +7,7 @@ obj.fillet(obj[-1].edges_added(), 0.4, color="yellow")
 hole = obj.sub(_.Cylinder(3, 4), "violet")
 obj.chamfer(hole.edges_added()[0], 0.3, color="blue")
 
-for mutation in obj.mutations:
-    print(mutation)
+obj.info()
 
 if __name__ == "__main__":
     from ocp_vscode import show_object

@@ -7,16 +7,17 @@ An experimental package used to manage [Build123d](https://github.com/gumyr/buil
 It can be used:
 - just out of curiosity, because it's a new way to build things;
 - as a debug tool, using colors and debug mode;
-- as a higher-level interface for Build123d;
 - as a more object-oriented approach to build CAD parts.
 
 ![](./images/chamfers_and_fillets.png)
 
 ## Installation
 
-    poetry install bumo
+This package [is registred on Pypi](https://pypi.org/project/bumo/), so you can either install it with Poetry:
 
-or using pip:
+    poetry add bumo
+
+or with pip:
 
     pip install bumo
 
@@ -74,6 +75,28 @@ obj.sub(_.Cylinder(3, 4), "violet")
 ```
 
 ![](./images/colors.png)
+
+### Listing mutations
+
+You can print the list of mutations and their properties:
+
+```py
+obj.info()
+```
+
+The previous example will produce:
+
+```
+╒═══════╤═══════════╤═════════╤═════════╕
+│   Idx │ Id        │ Type    │ Color   │
+╞═══════╪═══════════╪═════════╪═════════╡
+│     0 │ Builder-0 │ Builder │ orange  │
+├───────┼───────────┼─────────┼─────────┤
+│     1 │ add-1     │ add     │ green   │
+├───────┼───────────┼─────────┼─────────┤
+│     2 │ sub-2     │ sub     │ violet  │
+╘═══════╧═══════════╧═════════╧═════════╛
+```
 
 ### Moving objects
 
