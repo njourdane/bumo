@@ -5,29 +5,29 @@ from typing import Iterable
 
 import build123d as _
 
-from .operation import Operation
+from .mutation import Mutation
 from .utils import ColorLike, Hash
 from .shapes import EdgeListLike, EdgeDict, FaceDict
 
 
 class Builder:
     """A class used to manipulated Build123d objects that keeps track of each
-    performed operation and manage shape colors."""
+    performed mutation and manage shape colors."""
 
     debug_alpha = 0.2
     default_color: ColorLike = "orange"
 
     def __init__(self, part: _.Part, color: ColorLike|None=None, debug=False):
         self.object = part
-        self.operations: list[Operation] = []
+        self.mutations: list[Mutation] = []
         self.debug_faces: dict[Hash, ColorLike] = {}
         self.mutate(self.__class__.__name__, part, color, debug)
 
-    def __getitem__(self, opr_idx: int):
-        return self.operations[opr_idx]
+    def __getitem__(self, mut_idx: int):
+        return self.mutations[mut_idx]
 
     def __call__(self) -> list[_.Face]:
-        faces = self.operations[-1].faces
+        faces = self.mutations[-1].faces
         faces_color = self.get_faces_color()
 
         for face_hash, face in faces.items():
@@ -39,22 +39,22 @@ class Builder:
     def __mul__(self, location: _.Location) -> Builder:
         return Builder(location * self.object)
 
-    def get_face_operation(self, face: _.Face|Hash) -> Operation:
-        """Retrieve the operation who created the given face."""
+    def get_face_mutation(self, face: _.Face|Hash) -> Mutation:
+        """Retrieve the mutation who created the given face."""
 
-        _hash = Operation.hash_shape(face) if isinstance(face, _.Face) else face
-        for operation in self.operations:
-            if _hash in operation.faces:
-                return operation
+        _hash = Mutation.hash_shape(face) if isinstance(face, _.Face) else face
+        for mutation in self.mutations:
+            if _hash in mutation.faces:
+                return mutation
         raise ValueError
 
-    def get_edge_operation(self, edge: _.Edge|Hash) -> Operation:
-        """Retrieve the operation who created the given edge."""
+    def get_edge_mutation(self, edge: _.Edge|Hash) -> Mutation:
+        """Retrieve the mutation who created the given edge."""
 
-        _hash = Operation.hash_shape(edge) if isinstance(edge, _.Edge) else edge
-        for operation in self.operations:
-            if _hash in operation.edges:
-                return operation
+        _hash = Mutation.hash_shape(edge) if isinstance(edge, _.Edge) else edge
+        for mutation in self.mutations:
+            if _hash in mutation.edges:
+                return mutation
         raise ValueError
 
     def get_faces_color(self) -> dict[Hash, ColorLike|None]:
@@ -63,26 +63,26 @@ class Builder:
 
         faces_color: dict[Hash, ColorLike|None] = {}
 
-        for opr in self.operations:
+        for mut in self.mutations:
 
-            for face_hash in opr.faces_added:
-                color = opr.color
-                if opr.faces_alias:
-                    old_hash = opr.faces_alias[face_hash]
+            for face_hash in mut.faces_added:
+                color = mut.color
+                if mut.faces_alias:
+                    old_hash = mut.faces_alias[face_hash]
                     color = faces_color[old_hash]
 
                 faces_color[face_hash] = color
 
-            rm_colors = {faces_color[rm_hash] for rm_hash in opr.faces_removed}
+            rm_colors = {faces_color[rm_hash] for rm_hash in mut.faces_removed}
 
             if len(rm_colors) == 1:
                 rm_color = rm_colors.pop() if len(rm_colors) == 1 else None
-                for face_hash in opr.faces_altered:
+                for face_hash in mut.faces_altered:
                     faces_color[face_hash] = rm_color
             else:
-                for al_hash, al_face in opr.faces_altered.items():
-                    for rm_hash, rm_face in opr.faces_removed.items():
-                        if Operation.is_altered_faces(al_face, rm_face):
+                for al_hash, al_face in mut.faces_altered.items():
+                    for rm_hash, rm_face in mut.faces_removed.items():
+                        if Mutation.is_altered_faces(al_face, rm_face):
                             faces_color[al_hash] = faces_color[rm_hash]
 
         if self.debug_faces:
@@ -95,12 +95,12 @@ class Builder:
 
         return faces_color
 
-    def get_operation(self, opr_id: str) -> Operation|None:
-        """Return the operation identified by the given operation id."""
+    def get_mutation(self, mutation_id: str) -> Mutation|None:
+        """Return the mutation identified by the given id."""
 
-        for operation in self.operations:
-            if operation.id == opr_id:
-                return operation
+        for mutation in self.mutations:
+            if mutation.id == mutation_id:
+                return mutation
         return None
 
     def debug(self, faces: FaceDict, color: ColorLike="red"):
@@ -134,8 +134,8 @@ class Builder:
     def _part_color(cls, part: Builder|_.Part) -> ColorLike|None:
         """Retrieve the color of the current object."""
 
-        if isinstance(part, Builder) and len(part.operations) == 1:
-            return part.operations[-1].color
+        if isinstance(part, Builder) and len(part.mutations) == 1:
+            return part.mutations[-1].color
         return None
 
     def mutate(
@@ -145,29 +145,29 @@ class Builder:
             color: ColorLike|None,
             debug: bool,
             faces_alias: dict[Hash, Hash]|None=None
-        ) -> Operation:
+        ) -> Mutation:
         """Base mutation: mutate the current object to the given one by applying
-        an operation with the given name, color and debug mode."""
+        a mutation with the given name, color and debug mode."""
 
         self.object = obj
 
-        opr = Operation(
+        mutation = Mutation(
             obj,
-            self.operations[-1] if self.operations else None,
+            self.mutations[-1] if self.mutations else None,
             name,
-            len(self.operations),
+            len(self.mutations),
             color,
             faces_alias
         )
 
         if debug:
-            for face_hash in opr.faces_added:
+            for face_hash in mutation.faces_added:
                 self.debug_faces[face_hash] = color
 
-        self.operations.append(opr)
-        return opr
+        self.mutations.append(mutation)
+        return mutation
 
-    def move(self, location: _.Location, color: ColorLike|None=None, debug=False) -> Operation:
+    def move(self, location: _.Location, color: ColorLike|None=None, debug=False) -> Mutation:
         """Mutation: move the object to the given location, keeping the colors.
         with the given color and debug mode.
         If not color is defined, keep the previous ones for each face."""
@@ -176,8 +176,8 @@ class Builder:
         faces_alias: dict[Hash, Hash] = {}
 
         for face in self.object.faces():
-            old_hash = Operation.hash_shape(face)
-            new_hash = Operation.hash_shape(location * face)
+            old_hash = Mutation.hash_shape(face)
+            new_hash = Mutation.hash_shape(location * face)
             faces_alias[new_hash] = old_hash
 
         return self.mutate('move', obj, color, debug, faces_alias)
@@ -187,7 +187,7 @@ class Builder:
             part: Builder|_.Part,
             color: ColorLike|None=None,
             debug=False
-        ) -> Operation:
+        ) -> Mutation:
         """Mutation: fuse the given part to the current object.
         with the given color and debug mode."""
 
@@ -199,7 +199,7 @@ class Builder:
             part: Builder|_.Part,
             color: ColorLike|None=None,
             debug=False
-        ) -> Operation:
+        ) -> Mutation:
         """Mutation: substract the given part from the current object,
         with the given color and debug mode."""
 
@@ -212,7 +212,7 @@ class Builder:
             radius: float,
             color: ColorLike|None=None,
             debug=False
-        ) -> Operation:
+        ) -> Mutation:
         """Mutation: apply a fillet of the given radius to the given edges of
         the current object, with the given color and debug mode."""
 
@@ -227,7 +227,7 @@ class Builder:
             face: _.Face|None=None,
             color: ColorLike|None=None,
             debug=False
-        ) -> Operation:
+        ) -> Mutation:
         """Mutation: apply a chamfer of the given length to the given edges of
         the current object, with the given color and debug mode."""
 

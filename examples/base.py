@@ -10,8 +10,8 @@ obj.add(_.Box(3, 3, 9), color="green")
 hole = obj.sub(_.Cylinder(1, 9), color="blue")
 obj.chamfer(hole.edges_added()[0], 0.2, color="pink")
 
-for operation in obj.operations:
-    print(operation)
+for mutation in obj.mutations:
+    print(mutation)
 
 if __name__ == "__main__":
     from ocp_vscode import show_object

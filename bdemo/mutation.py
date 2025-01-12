@@ -8,13 +8,13 @@ from .utils import ColorLike, Hash
 from .shapes import ShapeState, FaceDict, EdgeDict
 
 
-class Operation:
+class Mutation:
     """Class managing the operation applied when mutating the object."""
 
     def __init__(
         self,
         obj: _.Part,
-        previous: Operation|None,
+        previous: Mutation|None,
         name: str,
         index: int,
         color: ColorLike|None,

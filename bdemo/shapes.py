@@ -8,7 +8,7 @@ from .utils import Hash
 
 
 class ShapeState(Enum):
-    """The possible states of a shape for an operation."""
+    """The possible states of a shape for a mutation."""
 
     ADDED = 1
     ALTERED = 2
