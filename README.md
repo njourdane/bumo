@@ -102,8 +102,6 @@ obj.chamfer(hole.edges_added()[0], 0.3, color="blue")
 
 ![](./images/chamfers_and_fillets.png)
 
-You may notice that the "top box" is not green anymore: this is because the yellow part produced by the fillet shares no edge with the top box, so the part is considered to be new and not just altered. In the other hand, the hole kept its pink color, because the bottom circular edge is still connected to the box.
-
 ### Using the debug mode
 
 You can turn one or several mutations in debug mode, so all the other faces will be translucent. Either by passing a debug attribute to mutations, or passing faces to the debug method:

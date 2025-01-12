@@ -116,6 +116,14 @@ class Mutation:
                 if this_hash == cls.hash_shape(that_edge):
                     return True
 
+
+        if (
+            this_face.geom_type == that_face.geom_type
+            and this_face.location == that_face.location
+            and this_face.center_location == that_face.center_location
+        ):
+            return True
+
         return False
 
     def is_altered_face(self, face: _.Face):
@@ -127,6 +135,13 @@ class Mutation:
 
         for edge in face.edges():
             if self.hash_shape(edge) in self.previous.edges:
+                return True
+
+        for that_face in self.previous.faces():
+            if (face.geom_type == that_face.geom_type
+                and face.location == that_face.location
+                and face.center_location == that_face.center_location
+            ):
                 return True
 
         return False

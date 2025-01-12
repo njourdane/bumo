@@ -1,14 +1,11 @@
 import build123d as _
 from bumo import Builder
 
-Builder.default_color = "grey"
-
-obj = Builder(_.Box(9, 9, 3), color="orange")
-# obj.move(_.Location([3, 0, 0]) * _.Rotation(15, 0, 0))
-obj.add(_.Box(6, 6, 6))
-obj.add(_.Box(3, 3, 9), color="green")
-hole = obj.sub(_.Cylinder(1, 9), color="blue")
-obj.chamfer(hole.edges_added()[0], 0.2, color="pink")
+obj = Builder(_.Box(12, 12, 2), "orange")
+obj.add(_.Box(8, 8, 4), "green")
+obj.fillet(obj[-1].edges_added(), 0.4, color="yellow")
+hole = obj.sub(_.Cylinder(3, 4), "violet")
+obj.chamfer(hole.edges_added()[0], 0.3, color="blue")
 
 for mutation in obj.mutations:
     print(mutation)
