@@ -1,13 +1,12 @@
 """Module containing the Builder class."""
 from __future__ import annotations
 from os import PathLike
-from typing import Iterable
 
 import build123d as _
 
 from .mutation import Mutation
 from .utils import ColorLike, Hash
-from .shapes import EdgeListLike, EdgeDict, FaceDict
+from .shapes import FaceListLike, EdgeListLike, FaceDict, EdgeDict
 
 
 class Builder:
@@ -106,22 +105,41 @@ class Builder:
                 return mutation
         return None
 
-    def debug(self, faces: FaceDict, color: ColorLike="red"):
-        """Set a face for debugging, so it will appear in the given color while
-        the rest of the object will be translucent."""
+    @classmethod
+    def _cast_faces(cls, faces: FaceListLike, fake_hashes=False) -> FaceDict:
+        """Cast the given faces to a FaceDict. If hashes are not used, set
+        `fake_hashes` to True for better performance."""
 
-        for face_hash in faces:
-            self.debug_faces[face_hash] = color
+        if isinstance(faces, FaceDict):
+            return faces
+
+        if isinstance(faces, _.Face):
+            face_hash = 'f' if fake_hashes else Mutation.hash_shape(faces)
+            return FaceDict({face_hash: faces})
+
+        faces_dict = FaceDict({})
+        for idx, face in enumerate(faces):
+            face_hash = str(idx) if fake_hashes else Mutation.hash_shape(face)
+            faces_dict[face_hash] = face
+        return faces_dict
 
     @classmethod
-    def _cast_edges(cls, edges: EdgeListLike) -> Iterable[_.Edge]:
-        """Cast an EdgeListLike to a Edge iterable."""
+    def _cast_edges(cls, edges: EdgeListLike, fake_hashes=False) -> EdgeDict:
+        """Cast the given edges an EdgeDict. If hashes are not used, set
+        `fake_hashes` to True for better performance."""
 
         if isinstance(edges, EdgeDict):
-            return edges()
+            return edges
+
         if isinstance(edges, _.Edge):
-            return [edges]
-        return edges
+            edge_hash = 'f' if fake_hashes else Mutation.hash_shape(edges)
+            return EdgeDict({edge_hash: edges})
+
+        edges_dict = EdgeDict({})
+        for idx, edge in enumerate(edges):
+            edge_hash = str(idx) if fake_hashes else Mutation.hash_shape(edge)
+            edges_dict[edge_hash] = edge
+        return edges_dict
 
     @classmethod
     def _cast_part(cls, part: Builder|_.Part) -> _.Part:
@@ -211,7 +229,7 @@ class Builder:
 
     def fillet(
             self,
-            edge_list: EdgeListLike,
+            edges: EdgeListLike,
             radius: float,
             color: ColorLike|None=None,
             debug=False
@@ -219,12 +237,13 @@ class Builder:
         """Mutation: apply a fillet of the given radius to the given edges of
         the current object, with the given color and debug mode."""
 
-        obj = self.object.fillet(radius, self._cast_edges(edge_list))
+        edges = self._cast_edges(edges, fake_hashes=True)()
+        obj = self.object.fillet(radius, edges)
         return self.mutate('fillet', obj, color, debug)
 
     def chamfer(
             self,
-            edge_list: EdgeListLike,
+            edges: EdgeListLike,
             length: float,
             length2: float|None=None,
             face: _.Face|None=None,
@@ -234,9 +253,16 @@ class Builder:
         """Mutation: apply a chamfer of the given length to the given edges of
         the current object, with the given color and debug mode."""
 
-        edges = self._cast_edges(edge_list)
+        edges = self._cast_edges(edges, fake_hashes=True)()
         obj = self.object.chamfer(length, length2, edges, face) # type: ignore
         return self.mutate('chamfer', obj, color, debug)
+
+    def debug(self, faces: FaceListLike, color: ColorLike="red"):
+        """Set a face for debugging, so it will appear in the given color while
+        the rest of the object will be translucent."""
+
+        for face_hash in self._cast_faces(faces):
+            self.debug_faces[face_hash] = color
 
     def export(
             self,

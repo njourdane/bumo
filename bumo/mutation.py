@@ -1,4 +1,4 @@
-"""Module containing the Operation class."""
+"""Module containing the Mutation class."""
 from __future__ import annotations
 from hashlib import md5
 
@@ -9,7 +9,7 @@ from .shapes import ShapeState, FaceDict, EdgeDict
 
 
 class Mutation:
-    """Class managing the operation applied when mutating the object."""
+    """Class managing the mutation applied when mutating the object."""
 
     def __init__(
         self,
