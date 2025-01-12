@@ -1,3 +1,3 @@
-# bdemo
+# Bumo
 
-Build123D Experiments on Mutable Objects.
+BUild123d Mutables Objects

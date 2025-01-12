@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "bdemo"
+name = "bumo"
 version = "0.0.1"
-description = "Build123D Experiments on Mutable Objects."
+description = "BUild123d Mutables Objects"
 authors = ["Nathanaël Jourdane <njourdane@protonmail.com>"]
 license = "MIT"
 readme = "README.md"
