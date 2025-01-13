@@ -7,13 +7,19 @@ import build123d as _
 from tabulate import tabulate
 
 from .mutation import Mutation
-from .colors import ColorLike
+from .colors import ColorLike, ColorPalette, build_palette
 from .shapes import Hash, FaceListLike, EdgeListLike, FaceDict, EdgeDict
 
 
 class Builder:
     """A class used to manipulated Build123d objects that keeps track of each
     performed mutation and manage shape colors."""
+
+    autocolor = True
+    "Set to True to automatically set a color on each mutation based."
+
+    color_palette = ColorPalette.VIRIDIS
+    "The color palette to use when auto_color is enabled."
 
     debug_alpha = 0.2
     "The alpha values used for translucent shapes in debug mode."
@@ -94,11 +100,19 @@ class Builder:
         object."""
 
         faces_color: dict[Hash, ColorLike|None] = {}
+        palette = (
+            build_palette(self.color_palette, len(self.mutations))
+            if self.autocolor
+            else []
+        )
 
         for mut in self.mutations:
 
             for face_hash in mut.faces_added:
-                color = mut.color
+                color = (
+                    palette[mut.index] if palette and not mut.color
+                    else mut.color
+                )
                 if mut.faces_alias:
                     old_hash = mut.faces_alias[face_hash]
                     color = faces_color[old_hash]
