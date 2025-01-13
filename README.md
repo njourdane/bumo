@@ -155,11 +155,21 @@ Note that their counterpart `+`, `-`, `&`, `*` are not allowed.
 
 ### Configuring the builder
 
-You can set builder attributes if necessary:
+You can configure the builder according to your needs:
 
 ```py
-Builder.default_color = "grey"
 Builder.debug_alpha = 0.5
-Builder.autocolor = False
+Builder.default_color = "grey"
 Builder.color_palette = ColorPalette.INFERNO
 ```
+
+Options are:
+
+- `autocolor`: Set to True to automatically set a color on each mutation based (default: True)
+- `color_palette`: The color palette to use when auto_color is enabled, one of VIRIDIS, INFERNO, MAGMA, PLASMA (default: VIRIDIS)
+- `debug_alpha`: The alpha values used for translucent shapes in debug mode (default: 0.2)
+- `default_color`: The default color to be used when a color is passed to a mutation (default: "orange")
+- `default_debug_color`: The default color to be used when using the debug mode (default: "red")
+- `info_colors`: Set to False to disable terminal colors in the info table (default: True)
+- `info_table_style`: The [table format](https://github.com/astanin/python-tabulate?tab=readme-ov-file#table-format) used in the info table (default: "fancy_grid")
+- `info_hex_colors`: Set to False to show colors in hex format in the info table (default: False)
