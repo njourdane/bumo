@@ -111,6 +111,20 @@ obj.sub(_.Rotation(25, 25, 0) * _.Cylinder(2.5, 10), "violet")
 
 ![](./images/move.png)
 
+### Alternative syntax
+
+Alternatively you can use the operators `+=`, `-=`, `&=`, `*=` to add mutations (but passing a color or debug mode will not be possible):
+
+```py
+obj = Builder(_.Box(12, 12, 2))
+obj += _.Box(8, 8, 4) # fuse
+obj -= _.Cylinder(3, 4) # substract
+obj &= _.Cylinder(5, 4) # intersect
+obj *= _.Rotation(90) # move
+```
+
+Note that their counterpart `+`, `-`, `&`, `*` are not allowed.
+
 ### Reusing mutations
 
 Instead of returning a copy of the object, mutations return a `Mutation` object that can be used to retrieve the altered faces and edges. Mutations can also be accessed by querrying a builder index (ie. `obj[n]`). This is useful with fillets and chamfers:

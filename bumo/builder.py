@@ -40,8 +40,21 @@ class Builder:
 
         return list(faces.values())
 
-    def __mul__(self, location: _.Location) -> Builder:
-        return Builder(location * self.object)
+    def __iadd__(self, part: Builder|_.Part):
+        self.add(part)
+        return self
+
+    def __isub__(self, part: Builder|_.Part):
+        self.sub(part)
+        return self
+
+    def __imul__(self, location: _.Location):
+        self.move(location)
+        return self
+
+    def __iand__(self, part: Builder|_.Part):
+        self.intersect(part)
+        return self
 
     def get_face_mutation(self, face: _.Face|Hash) -> Mutation:
         """Retrieve the mutation who created the given face."""
