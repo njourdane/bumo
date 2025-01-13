@@ -72,19 +72,18 @@ You can print the list of mutations and their properties:
 obj.info()
 ```
 
-The previous example will produce:
+The previous example will produce the following table:
 
-```
-╒═══════╤═══════════╤═════════╤══════════════════════════════╕
-│   Idx │ Id        │ Type    │ Color                        │
-╞═══════╪═══════════╪═════════╪══════════════════════════════╡
-│     0 │ Builder-0 │ Builder │ #fce624ff (~lightgoldenrod1) │
-├───────┼───────────┼─────────┼──────────────────────────────┤
-│     1 │ add-1     │ add     │ #20908bff (~cadetblue3)      │
-├───────┼───────────┼─────────┼──────────────────────────────┤
-│     2 │ sub-2     │ sub     │ #430053ff (~magenta4)        │
-╘═══════╧═══════════╧═════════╧══════════════════════════════╛
-```
+![](./images/info.png)
+
+With:
+- **Idx**: mutation index;
+- **Id**: mutation id;
+- **Type**: operation type;
+- **Color**: faces color for this mutation;
+- **f+**: amount of added faces on this mutation;
+- **f~**: amount of altered faces on this mutation;
+- **f-**: amount of removed faces on this mutation.
 
 ### Moving objects
 

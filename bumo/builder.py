@@ -31,7 +31,7 @@ class Builder:
     "The default color to be used when using the debug mode."
 
     info_colors = True
-    "Set to False to disable terminal colors in info() output."
+    "Set to False to disable terminal colors in the info table."
 
     def __init__(self, part: _.Part, color: ColorLike | None=None, debug=False):
         self.object = part
@@ -332,7 +332,7 @@ class Builder:
             else []
         )
 
-        def row(mutation: Mutation) -> tuple[str, str, str, str]:
+        def row(mutation: Mutation) -> tuple[str, str, str, str, str, str, str]:
             color = (
                 palette[mutation.index] if palette and not mutation.color
                 else mutation.color
@@ -347,9 +347,17 @@ class Builder:
             if self.info_colors:
                 color_str = f"{ color_start }{ color_str }{ color_end }"
 
-            return (str(mutation.index), mutation.id, mutation.name, color_str)
+            return (
+                str(mutation.index),
+                mutation.id,
+                mutation.name,
+                color_str,
+                str(len(mutation.faces_added)),
+                str(len(mutation.faces_altered)),
+                str(len(mutation.faces_removed)),
+            )
 
-        headers=["Idx", "Id", "Type", "Color"]
+        headers = ["Idx", "Id", "Type", "Color", "f+", "f~", "f-"]
         table = [row(mutation) for mutation in self.mutations]
         print(tabulate(table, headers, tablefmt=style), file=file or stdout)
 
