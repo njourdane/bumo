@@ -7,8 +7,8 @@ import build123d as _
 from tabulate import tabulate
 
 from .mutation import Mutation
-from .utils import ColorLike, Hash
-from .shapes import FaceListLike, EdgeListLike, FaceDict, EdgeDict
+from .colors import ColorLike
+from .shapes import Hash, FaceListLike, EdgeListLike, FaceDict, EdgeDict
 
 
 class Builder:

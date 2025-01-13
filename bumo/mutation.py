@@ -4,8 +4,8 @@ from hashlib import md5
 
 import build123d as _
 
-from .utils import ColorLike, Hash
-from .shapes import ShapeState, FaceDict, EdgeDict
+from .colors import ColorLike
+from .shapes import Hash, ShapeState, FaceDict, EdgeDict
 
 
 class Mutation:

@@ -1,9 +1,10 @@
-"""A module used to store utility stuff used in various other modules."""
+"""A module used for color-related stuff."""
+
+from enum import Enum
 from typing import TypeAlias
 
 import build123d as _
 
-Hash: TypeAlias = str
 
 ColorLike: TypeAlias = (
     _.Color | # build123d color

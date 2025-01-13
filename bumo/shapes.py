@@ -4,7 +4,8 @@ from typing import TypeAlias, Iterable
 
 import build123d as _
 
-from .utils import Hash
+
+Hash: TypeAlias = str
 
 
 class ShapeState(Enum):
