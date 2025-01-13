@@ -19,7 +19,20 @@ ColorLike: TypeAlias = (
 )
 
 
-ColorTuple: TypeAlias = tuple[float, float, float]
+def cast_color(color: ColorLike) -> _.Color:
+    """Cast a ColorLike to a Build123d Color"""
+    return color if isinstance(color, _.Color) else _.Color(color)
+
+
+def color_to_str(color: _.Color) -> str:
+    """Return a string representation of the given color."""
+    def float_to_hex(n: float):
+        return hex(int(n * 255))[2:].rjust(2, '0')
+
+    r, g, b, a = [float_to_hex(c) for c in color.to_tuple()]
+    word = str(color).split("~")[1].strip().lower()
+    return f"#{ r }{ g }{ b }{ a } (~{ word })"
+
 
 
 class ColorPalette(Enum):
@@ -34,29 +47,18 @@ class ColorPalette(Enum):
         palettes = [viridis, inferno, magma, plasma]
         return palettes[self.value]
 
+    def build_palette(self, amount: int) -> list[_.Color]:
+        """Build a list of colors based on the given palette and the amount of
+        colors."""
 
-def build_palette(
-        palette: ColorPalette,
-        amount: int,
-        as_str=False
-    ) -> list[ColorTuple|str]:
-    """Build a list of colors based on the given palette and the amount of
-    colors."""
+        def get_color(index: int) -> _.Color:
+            color_int = self.get_palette()[index]
+            color_hex = hex(color_int)[2:].rjust(6, '0')
+            color_tuple = struct.unpack('BBB', bytes.fromhex(color_hex))
+            return _.Color(tuple(c/256 for c in color_tuple))
 
-    def to_hex(color: int) -> str:
-        return hex(color)[2:].rjust(6, '0')
+        if amount == 1:
+            return [get_color(127)]
 
-    def to_tuple(color: int) -> ColorTuple:
-        tuple_int = struct.unpack('BBB', bytes.fromhex(to_hex(color)))
-        return tuple(c/256 for c in tuple_int)
-
-    def get_color(index):
-        func_convert = to_hex if as_str else to_tuple
-        return func_convert(palette.get_palette()[index])
-
-    indexes = (
-        [127] if amount == 1
-        else [int(idx / (amount - 1) * 255) for idx in range(amount)]
-    )
-
-    return [get_color(index) for index in indexes]
+        indexes = [int(idx / (amount - 1) * 255) for idx in range(amount)]
+        return [get_color(index) for index in indexes]

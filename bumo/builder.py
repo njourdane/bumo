@@ -7,7 +7,7 @@ import build123d as _
 from tabulate import tabulate
 
 from .mutation import Mutation
-from .colors import ColorLike, ColorPalette, build_palette
+from .colors import ColorLike, ColorPalette, cast_color, color_to_str
 from .shapes import Hash, FaceListLike, EdgeListLike, FaceDict, EdgeDict
 
 
@@ -25,12 +25,15 @@ class Builder:
     "The alpha values used for translucent shapes in debug mode."
 
     default_color: ColorLike = "orange"
-    "The default color to be used when a color is passed to a mutation"
+    "The default color to be used when a color is passed to a mutation."
 
-    def __init__(self, part: _.Part, color: ColorLike|None=None, debug=False):
+    default_debug_color: ColorLike = "red"
+    "The default color to be used when using the debug mode."
+
+    def __init__(self, part: _.Part, color: ColorLike | None=None, debug=False):
         self.object = part
         self.mutations: list[Mutation] = []
-        self.debug_faces: dict[Hash, ColorLike] = {}
+        self.debug_faces: dict[Hash, _.Color] = {}
         self.mutate(self.__class__.__name__, part, color, debug)
 
     def __getitem__(self, mut_idx: int):
@@ -50,11 +53,11 @@ class Builder:
 
         return list(faces.values())
 
-    def __iadd__(self, part: Builder|_.Part):
+    def __iadd__(self, part: Builder | _.Part):
         self.add(part)
         return self
 
-    def __isub__(self, part: Builder|_.Part):
+    def __isub__(self, part: Builder | _.Part):
         self.sub(part)
         return self
 
@@ -62,7 +65,7 @@ class Builder:
         self.move(location)
         return self
 
-    def __iand__(self, part: Builder|_.Part):
+    def __iand__(self, part: Builder | _.Part):
         self.intersect(part)
         return self
 
@@ -77,7 +80,7 @@ class Builder:
 
         raise KeyError
 
-    def get_face_mutation(self, face: _.Face|Hash) -> Mutation:
+    def get_face_mutation(self, face: _.Face | Hash) -> Mutation:
         """Retrieve the mutation who created the given face."""
 
         _hash = Mutation.hash_shape(face) if isinstance(face, _.Face) else face
@@ -86,7 +89,7 @@ class Builder:
                 return mutation
         raise ValueError
 
-    def get_edge_mutation(self, edge: _.Edge|Hash) -> Mutation:
+    def get_edge_mutation(self, edge: _.Edge | Hash) -> Mutation:
         """Retrieve the mutation who created the given edge."""
 
         _hash = Mutation.hash_shape(edge) if isinstance(edge, _.Edge) else edge
@@ -95,13 +98,13 @@ class Builder:
                 return mutation
         raise ValueError
 
-    def get_faces_color(self) -> dict[Hash, ColorLike|None]:
+    def get_faces_color(self) -> dict[Hash, _.Color]:
         """Return a dictionnary containing the color of each face of the current
         object."""
 
-        faces_color: dict[Hash, ColorLike|None] = {}
+        faces_color: dict[Hash, _.Color] = {}
         palette = (
-            build_palette(self.color_palette, len(self.mutations))
+            self.color_palette.build_palette(len(self.mutations))
             if self.autocolor
             else []
         )
@@ -117,12 +120,15 @@ class Builder:
                     old_hash = mut.faces_alias[face_hash]
                     color = faces_color[old_hash]
 
-                faces_color[face_hash] = color
+                faces_color[face_hash] = color or cast_color(self.default_color)
 
             rm_colors = {faces_color[rm_hash] for rm_hash in mut.faces_removed}
 
             if len(rm_colors) == 1:
-                rm_color = rm_colors.pop() if len(rm_colors) == 1 else None
+                rm_color = (
+                    rm_colors.pop() if len(rm_colors) == 1
+                    else cast_color(self.default_color)
+                )
                 for face_hash in mut.faces_altered:
                     faces_color[face_hash] = rm_color
             else:
@@ -136,12 +142,12 @@ class Builder:
                 if face_hash in self.debug_faces:
                     faces_color[face_hash] = self.debug_faces[face_hash]
                 else:
-                    r, v, b = self.cast_color(color).to_tuple()[:3]
+                    r, v, b = cast_color(color).to_tuple()[:3]
                     faces_color[face_hash] = _.Color(r, v, b, self.debug_alpha)
 
         return faces_color
 
-    def get_mutation(self, mutation_id: str) -> Mutation|None:
+    def get_mutation(self, mutation_id: str) -> Mutation | None:
         """Return the mutation identified by the given id."""
 
         for mutation in self.mutations:
@@ -186,17 +192,12 @@ class Builder:
         return edges_dict
 
     @classmethod
-    def _cast_part(cls, part: Builder|_.Part) -> _.Part:
+    def _cast_part(cls, part: Builder | _.Part) -> _.Part:
         """Cast an EdgeListLike to a Edge iterable."""
         return part if isinstance(part, _.Part) else part.object
 
     @classmethod
-    def cast_color(cls, color: ColorLike) -> _.Color:
-        """Cast a ColorLike to a Color"""
-        return color if isinstance(color, _.Color) else _.Color(color)
-
-    @classmethod
-    def _part_color(cls, part: Builder|_.Part) -> ColorLike|None:
+    def _part_color(cls, part: Builder | _.Part) -> ColorLike|None:
         """Retrieve the color of the current object."""
 
         if isinstance(part, Builder) and len(part.mutations) == 1:
@@ -207,32 +208,38 @@ class Builder:
             self,
             name: str,
             obj: _.Part,
-            color: ColorLike|None,
+            color: ColorLike | None,
             debug: bool,
-            faces_alias: dict[Hash, Hash]|None=None
+            faces_alias: dict[Hash, Hash] | None=None
         ) -> Mutation:
         """Base mutation: mutate the current object to the given one by applying
         a mutation with the given name, color and debug mode."""
 
         self.object = obj
+        _color = cast_color(color if color else self.default_debug_color)
 
         mutation = Mutation(
             obj,
             self.mutations[-1] if self.mutations else None,
             name,
             len(self.mutations),
-            color,
+            _color if color else None,
             faces_alias
         )
 
         if debug:
             for face_hash in mutation.faces_added:
-                self.debug_faces[face_hash] = color
+                self.debug_faces[face_hash] = _color
 
         self.mutations.append(mutation)
         return mutation
 
-    def move(self, location: _.Location, color: ColorLike|None=None, debug=False) -> Mutation:
+    def move(
+            self,
+            location: _.Location,
+            color: ColorLike | None=None,
+            debug=False
+        ) -> Mutation:
         """Mutation: move the object to the given location, keeping the colors.
         with the given color and debug mode.
         If not color is defined, keep the previous ones for each face."""
@@ -249,8 +256,8 @@ class Builder:
 
     def add(
             self,
-            part: Builder|_.Part,
-            color: ColorLike|None=None,
+            part: Builder | _.Part,
+            color: ColorLike | None=None,
             debug=False
         ) -> Mutation:
         """Mutation: fuse the given part to the current object.
@@ -261,8 +268,8 @@ class Builder:
 
     def sub(
             self,
-            part: Builder|_.Part,
-            color: ColorLike|None=None,
+            part: Builder | _.Part,
+            color: ColorLike | None=None,
             debug=False
         ) -> Mutation:
         """Mutation: substract the given part from the current object,
@@ -273,8 +280,8 @@ class Builder:
 
     def intersect(
             self,
-            part: Builder|_.Part,
-            color: ColorLike|None=None,
+            part: Builder | _.Part,
+            color: ColorLike | None=None,
             debug=False
         ) -> Mutation:
         """Mutation: intersects the given part to the current object,
@@ -287,7 +294,7 @@ class Builder:
             self,
             edges: EdgeListLike,
             radius: float,
-            color: ColorLike|None=None,
+            color: ColorLike | None=None,
             debug=False
         ) -> Mutation:
         """Mutation: apply a fillet of the given radius to the given edges of
@@ -301,9 +308,9 @@ class Builder:
             self,
             edges: EdgeListLike,
             length: float,
-            length2: float|None=None,
-            face: _.Face|None=None,
-            color: ColorLike|None=None,
+            length2: float | None=None,
+            face: _.Face | None=None,
+            color: ColorLike | None=None,
             debug=False
         ) -> Mutation:
         """Mutation: apply a chamfer of the given length to the given edges of
@@ -317,7 +324,7 @@ class Builder:
         """Print the list of mutations to the given file (stdout by default)."""
 
         palette = (
-            build_palette(self.color_palette, len(self.mutations), True)
+            self.color_palette.build_palette(len(self.mutations))
             if self.autocolor
             else []
         )
@@ -327,23 +334,25 @@ class Builder:
                 palette[mutation.index] if palette and not mutation.color
                 else mutation.color
             )
-            return (str(mutation.index), mutation.id, mutation.name, str(color))
+            color_str = color_to_str(color or cast_color(self.default_color))
+            return (str(mutation.index), mutation.id, mutation.name, color_str)
 
         headers=["Idx", "Id", "Type", "Color"]
         table = [row(mutation) for mutation in self.mutations]
         print(tabulate(table, headers, tablefmt=style), file=file or stdout)
 
-    def debug(self, faces: FaceListLike, color: ColorLike="red"):
+    def debug(self, faces: FaceListLike, color: ColorLike | None=None):
         """Set a face for debugging, so it will appear in the given color while
         the rest of the object will be translucent."""
 
+        _color = cast_color(color if color else self.default_debug_color)
         for face_hash in self._cast_faces(faces):
-            self.debug_faces[face_hash] = color
+            self.debug_faces[face_hash] = _color
 
     def export(
             self,
             exporter: _.Export2D,
-            file_path: PathLike|bytes|str,
+            file_path: PathLike | bytes | str,
             include_part=True
         ):
         """Export the current object using the given exporter in the given file
@@ -355,7 +364,7 @@ class Builder:
 
     def export_stl(
             self,
-            file_path: PathLike|bytes|str,
+            file_path: PathLike | bytes | str,
             tolerance: float = 0.001,
             angular_tolerance: float = 0.1,
             ascii_format: bool = False

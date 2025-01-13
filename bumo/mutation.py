@@ -4,7 +4,7 @@ from hashlib import md5
 
 import build123d as _
 
-from .colors import ColorLike
+from .colors import cast_color
 from .shapes import Hash, ShapeState, FaceDict, EdgeDict
 
 
@@ -14,16 +14,16 @@ class Mutation:
     def __init__(
         self,
         obj: _.Part,
-        previous: Mutation|None,
+        previous: Mutation | None,
         name: str,
         index: int,
-        color: ColorLike|None,
-        faces_alias: dict[Hash, Hash]|None
+        color: _.Color | None,
+        faces_alias: dict[Hash, Hash] | None
     ) -> None:
         self.previous = previous
         self.name = name
         self.index = index
-        self.color = color
+        self.color = cast_color(color) if color else None
         self.faces_alias = faces_alias or {}
 
         self.id = f"{ name }-{ index }"
