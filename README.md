@@ -81,9 +81,8 @@ With:
 - **Id**: mutation id;
 - **Type**: operation type;
 - **Color**: faces color for this mutation;
-- **f+**: amount of added faces on this mutation;
-- **f~**: amount of altered faces on this mutation;
-- **f-**: amount of removed faces on this mutation.
+- **f+**, **f~**, **f-**: amount of added/altered/removed faces on this mutation;
+- **e+**, **e~**, **e-**: amount of added/altered/removed edges on this mutation;
 
 ### Moving objects
 

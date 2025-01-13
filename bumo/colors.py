@@ -24,14 +24,16 @@ def cast_color(color: ColorLike) -> _.Color:
     return color if isinstance(color, _.Color) else _.Color(color)
 
 
-def color_to_str(color: _.Color) -> str:
+def color_to_str(color: _.Color, as_hex=False) -> str:
     """Return a string representation of the given color."""
     def float_to_hex(n: float):
         return hex(int(n * 255))[2:].rjust(2, '0')
 
-    r, g, b, a = [float_to_hex(c) for c in color.to_tuple()]
-    word = str(color).split("~")[1].strip().lower()
-    return f"#{ r }{ g }{ b }{ a } (~{ word })"
+    if as_hex:
+        r, g, b, a = [float_to_hex(c) for c in color.to_tuple()]
+        return f"#{ r }{ g }{ b }{ a }"
+
+    return str(color).split("~")[1].strip().lower()
 
 
 

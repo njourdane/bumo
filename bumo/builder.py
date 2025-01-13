@@ -33,6 +33,13 @@ class Builder:
     info_colors = True
     "Set to False to disable terminal colors in the info table."
 
+    info_table_style = "fancy_grid"
+    """The table format used in the info table.
+    See https://github.com/astanin/python-tabulate?tab=readme-ov-file#table-format"""
+
+    info_hex_colors = False
+    "Set to False to show colors in hex format in the info table."
+
     def __init__(self, part: _.Part, color: ColorLike | None=None, debug=False):
         self.object = part
         self.mutations: list[Mutation] = []
@@ -323,7 +330,7 @@ class Builder:
         obj = self.object.chamfer(length, length2, edges, face) # type: ignore
         return self.mutate('chamfer', obj, color, debug)
 
-    def info(self, file=None, style="fancy_grid"):
+    def info(self, file=None):
         """Print the list of mutations to the given file (stdout by default)."""
 
         palette = (
@@ -332,7 +339,7 @@ class Builder:
             else []
         )
 
-        def row(mutation: Mutation) -> tuple[str, str, str, str, str, str, str]:
+        def row(mutation: Mutation) -> tuple:
             color = (
                 palette[mutation.index] if palette and not mutation.color
                 else mutation.color
@@ -343,7 +350,7 @@ class Builder:
             color_start = f"\033[38;2;{ r };{ g };{ b }m"
             color_end = "\033[0m"
 
-            color_str = color_to_str(color or cast_color(self.default_color))
+            color_str = color_to_str(_color, self.info_hex_colors)
             if self.info_colors:
                 color_str = f"{ color_start }{ color_str }{ color_end }"
 
@@ -355,11 +362,16 @@ class Builder:
                 str(len(mutation.faces_added)),
                 str(len(mutation.faces_altered)),
                 str(len(mutation.faces_removed)),
+                str(len(mutation.edges_added)),
+                str(len(mutation.edges_altered)),
+                str(len(mutation.edges_removed)),
             )
 
-        headers = ["Idx", "Id", "Type", "Color", "f+", "f~", "f-"]
+        headers = ["Idx", "Id", "Type", "Color"]
+        headers += ["f+", "f~", "f-", "e+", "e~", "e-"]
         table = [row(mutation) for mutation in self.mutations]
-        print(tabulate(table, headers, tablefmt=style), file=file or stdout)
+        str_table = tabulate(table, headers, tablefmt=self.info_table_style)
+        print(str_table, file=file or stdout)
 
     def debug(self, faces: FaceListLike, color: ColorLike | None=None):
         """Set a face for debugging, so it will appear in the given color while
