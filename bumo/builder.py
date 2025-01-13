@@ -30,6 +30,9 @@ class Builder:
     default_debug_color: ColorLike = "red"
     "The default color to be used when using the debug mode."
 
+    info_colors = True
+    "Set to False to disable terminal colors in info() output."
+
     def __init__(self, part: _.Part, color: ColorLike | None=None, debug=False):
         self.object = part
         self.mutations: list[Mutation] = []
@@ -334,7 +337,16 @@ class Builder:
                 palette[mutation.index] if palette and not mutation.color
                 else mutation.color
             )
+            _color = color or cast_color(self.default_color)
+            r, g, b = [int(c * 255) for c in _color.to_tuple()[:3]]
+
+            color_start = f"\033[38;2;{ r };{ g };{ b }m"
+            color_end = "\033[0m"
+
             color_str = color_to_str(color or cast_color(self.default_color))
+            if self.info_colors:
+                color_str = f"{ color_start }{ color_str }{ color_end }"
+
             return (str(mutation.index), mutation.id, mutation.name, color_str)
 
         headers=["Idx", "Id", "Type", "Color"]
