@@ -34,6 +34,10 @@ class Builder:
         faces = self.mutations[-1].faces
         faces_color = self.get_faces_color()
 
+        for debug_hash in self.debug_faces:
+            if debug_hash not in faces:
+                faces[debug_hash] = self.get_face(debug_hash)
+
         for face_hash, face in faces.items():
             face.color = faces_color[face_hash] or self.default_color
             face.label = face_hash[:6]
@@ -55,6 +59,17 @@ class Builder:
     def __iand__(self, part: Builder|_.Part):
         self.intersect(part)
         return self
+
+    def get_face(self, face_hash: Hash, from_end=True) -> _.Face:
+        """Return a face based on its hash by iterating over all the mutations,
+        allowing to find removed faces, either from begining or from the end."""
+        mutations = reversed(self.mutations) if from_end else self.mutations
+
+        for mutation in mutations:
+            if face_hash in mutation.faces:
+                return mutation.faces[face_hash]
+
+        raise KeyError
 
     def get_face_mutation(self, face: _.Face|Hash) -> Mutation:
         """Retrieve the mutation who created the given face."""

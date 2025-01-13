@@ -141,15 +141,16 @@ obj.chamfer(hole.edges_added()[0], 0.3, color="blue")
 
 ### Using the debug mode
 
-You can turn one or several mutations in debug mode, so all the other faces will be translucent. Either by passing a debug attribute to mutations, or passing faces to the debug method:
+You can turn one or several mutations in debug mode, so all the other faces will be translucent. Either by passing a debug attribute to mutations, or passing faces (even removed ones) to the debug method:
 
 ```py
 obj = Builder(_.Box(12, 12, 2), "orange")
 obj.add(_.Box(8, 8, 4), "green")
 obj.fillet(obj[-1].edges_added(), 0.4, color="yellow")
-obj.debug(obj[-1].faces_altered()[0], "red")
 hole = obj.sub(_.Cylinder(3, 4), "violet")
 obj.chamfer(hole.edges_added()[0], 0.3, color="blue", debug=True)
+obj.debug(obj[2].faces_altered()[0], "red")
+# obj.debug(hole.faces_removed(), "red")
 ```
 
 ![](./images/debug.png)
