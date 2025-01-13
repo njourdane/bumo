@@ -38,7 +38,7 @@ from bumo import Builder
 
 obj = Builder(_.Box(12, 12, 2))
 
-show_object(obj())
+show_object(obj(), clear=True)
 ```
 
 ![](./images/box.png)
@@ -64,18 +64,6 @@ obj.add(obj2)
 obj.sub(_.Cylinder(3, 4))
 ```
 
-### Adding colors
-
-On each mutation you can pass a `color`, because coloring object faces is useful and funny:
-
-```py
-obj = Builder(_.Box(12, 12, 2), "orange")
-obj.add(_.Box(8, 8, 4), "green")
-obj.sub(_.Cylinder(3, 4), "violet")
-```
-
-![](./images/colors.png)
-
 ### Listing mutations
 
 You can print the list of mutations and their properties:
@@ -90,11 +78,11 @@ The previous example will produce:
 ╒═══════╤═══════════╤═════════╤═════════╕
 │   Idx │ Id        │ Type    │ Color   │
 ╞═══════╪═══════════╪═════════╪═════════╡
-│     0 │ Builder-0 │ Builder │ orange  │
+│     0 │ Builder-0 │ Builder │ fde725  │
 ├───────┼───────────┼─────────┼─────────┤
-│     1 │ add-1     │ add     │ green   │
+│     1 │ add-1     │ add     │ 21918c  │
 ├───────┼───────────┼─────────┼─────────┤
-│     2 │ sub-2     │ sub     │ violet  │
+│     2 │ sub-2     │ sub     │ 440154  │
 ╘═══════╧═══════════╧═════════╧═════════╛
 ```
 
@@ -103,17 +91,59 @@ The previous example will produce:
 You can move objects with `move()`, all colors will be preserved. Note that you can still use the Build123d `*` operator before passing the object to the builder.
 
 ```py
-obj = Builder(_.Box(12, 12, 2), "orange")
-obj.add(_.Box(8, 8, 4), "green")
+obj = Builder(_.Box(12, 12, 2))
+obj.add(_.Box(8, 8, 4))
 obj.move(_.Location([-5, 2, 0]))
-obj.sub(_.Rotation(25, 25, 0) * _.Cylinder(2.5, 10), "violet")
+obj.sub(_.Rotation(25, 25, 0) * _.Cylinder(2.5, 10))
 ```
 
 ![](./images/move.png)
 
+### Reusing mutations
+
+Instead of returning a copy of the object, mutations return a `Mutation` object that can be used to retrieve the altered faces and edges. Mutations can also be accessed by querrying a builder index (ie. `obj[n]`). This is useful with fillets and chamfers:
+
+```py
+obj = Builder(_.Box(12, 12, 2))
+obj.add(_.Box(8, 8, 4))
+obj.fillet(obj[-1].edges_added(), 0.4)
+hole = obj.sub(_.Cylinder(3, 4))
+obj.chamfer(hole.edges_added()[0], 0.3)
+```
+
+![](./images/chamfers_and_fillets.png)
+
+### Changing colors
+
+On each mutation you can pass a specific color instead of the auto-generated-one:
+
+```py
+obj = Builder(_.Box(12, 12, 2), "orange")
+obj.add(_.Box(8, 8, 4), "green")
+obj.sub(_.Cylinder(3, 4), "violet")
+```
+
+![](./images/colors.png)
+
+### Using the debug mode
+
+You can turn one or several mutations in debug mode, so all the other faces will be translucent. Either by passing a debug attribute to mutations, or passing faces (even removed ones) to the debug method:
+
+```py
+obj = Builder(_.Box(12, 12, 2))
+obj.add(_.Box(8, 8, 4))
+obj.fillet(obj[-1].edges_added(), 0.4)
+hole = obj.sub(_.Cylinder(3, 4))
+obj.chamfer(hole.edges_added()[0], 0.3, debug=True)
+obj.debug(obj[2].faces_altered()[0], "red")
+# obj.debug(hole.faces_removed(), "red")
+```
+
+![](./images/debug.png)
+
 ### Alternative syntax
 
-Alternatively you can use the operators `+=`, `-=`, `&=`, `*=` to add mutations (but passing a color or debug mode will not be possible):
+Alternatively you can use the operators `+=`, `-=`, `&=`, `*=` to add mutations. But beware that passing a color or debug mode will no longer be possible, neither storing the mutation to a variable (you can still get them with the `obj[n]` syntax):
 
 ```py
 obj = Builder(_.Box(12, 12, 2))
@@ -125,36 +155,6 @@ obj *= _.Rotation(90) # move
 
 Note that their counterpart `+`, `-`, `&`, `*` are not allowed.
 
-### Reusing mutations
-
-Instead of returning a copy of the object, mutations return a `Mutation` object that can be used to retrieve the altered faces and edges. Mutations can also be accessed by querrying a builder index (ie. `obj[n]`). This is useful with fillets and chamfers:
-
-```py
-obj = Builder(_.Box(12, 12, 2), "orange")
-obj.add(_.Box(8, 8, 4), "green")
-obj.fillet(obj[-1].edges_added(), 0.4, color="yellow")
-hole = obj.sub(_.Cylinder(3, 4), "violet")
-obj.chamfer(hole.edges_added()[0], 0.3, color="blue")
-```
-
-![](./images/chamfers_and_fillets.png)
-
-### Using the debug mode
-
-You can turn one or several mutations in debug mode, so all the other faces will be translucent. Either by passing a debug attribute to mutations, or passing faces (even removed ones) to the debug method:
-
-```py
-obj = Builder(_.Box(12, 12, 2), "orange")
-obj.add(_.Box(8, 8, 4), "green")
-obj.fillet(obj[-1].edges_added(), 0.4, color="yellow")
-hole = obj.sub(_.Cylinder(3, 4), "violet")
-obj.chamfer(hole.edges_added()[0], 0.3, color="blue", debug=True)
-obj.debug(obj[2].faces_altered()[0], "red")
-# obj.debug(hole.faces_removed(), "red")
-```
-
-![](./images/debug.png)
-
 ### Configuring the builder
 
 You can set builder attributes if necessary:
@@ -162,4 +162,6 @@ You can set builder attributes if necessary:
 ```py
 Builder.default_color = "grey"
 Builder.debug_alpha = 0.5
+Builder.autocolor = False
+Builder.color_palette = ColorPalette.INFERNO
 ```
