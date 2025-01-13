@@ -316,13 +316,18 @@ class Builder:
     def info(self, file=None, style="fancy_grid"):
         """Print the list of mutations to the given file (stdout by default)."""
 
+        palette = (
+            build_palette(self.color_palette, len(self.mutations), True)
+            if self.autocolor
+            else []
+        )
+
         def row(mutation: Mutation) -> tuple[str, str, str, str]:
-            return (
-                str(mutation.index),
-                mutation.id,
-                mutation.name,
-                str(mutation.color),
+            color = (
+                palette[mutation.index] if palette and not mutation.color
+                else mutation.color
             )
+            return (str(mutation.index), mutation.id, mutation.name, str(color))
 
         headers=["Idx", "Id", "Type", "Color"]
         table = [row(mutation) for mutation in self.mutations]

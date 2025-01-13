@@ -35,17 +35,28 @@ class ColorPalette(Enum):
         return palettes[self.value]
 
 
-def build_palette(palette: ColorPalette, amount: int) -> list[ColorTuple]:
+def build_palette(
+        palette: ColorPalette,
+        amount: int,
+        as_str=False
+    ) -> list[ColorTuple|str]:
     """Build a list of colors based on the given palette and the amount of
     colors."""
 
+    def to_hex(color: int) -> str:
+        return hex(color)[2:].rjust(6, '0')
+
     def to_tuple(color: int) -> ColorTuple:
-        rgb_str = hex(color)[2:].rjust(6, '0')
-        tuple_int = struct.unpack('BBB', bytes.fromhex(rgb_str))
+        tuple_int = struct.unpack('BBB', bytes.fromhex(to_hex(color)))
         return tuple(c/256 for c in tuple_int)
+
+    def get_color(index):
+        func_convert = to_hex if as_str else to_tuple
+        return func_convert(palette.get_palette()[index])
 
     indexes = (
         [127] if amount == 1
         else [int(idx / (amount - 1) * 255) for idx in range(amount)]
     )
-    return [to_tuple(palette.get_palette()[idx]) for idx in indexes]
+
+    return [get_color(index) for index in indexes]
