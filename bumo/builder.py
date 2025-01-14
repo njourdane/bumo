@@ -33,12 +33,12 @@ class Builder:
     info_colors = True
     "Set to False to disable terminal colors in the info table."
 
-    info_table_style = "fancy_grid"
+    info_table_style = "fancy_outline"
     """The table format used in the info table.
     See https://github.com/astanin/python-tabulate?tab=readme-ov-file#table-format"""
 
-    info_hex_colors = False
-    "Set to False to show colors in hex format in the info table."
+    info_columns = ["idx", "label", "type", "f+", "f~", "f-", "e+", "e~", "e-"]
+    """"The columns to display in fon table."""
 
     def __init__(self, part: _.Part, color: ColorLike | None=None, debug=False):
         self.object = part
@@ -347,28 +347,30 @@ class Builder:
             _color = color or cast_color(self.default_color)
             r, g, b = [int(c * 255) for c in _color.to_tuple()[:3]]
 
-            color_start = f"\033[38;2;{ r };{ g };{ b }m"
-            color_end = "\033[0m"
+            start = f"\033[38;2;{ r };{ g };{ b }m"
+            end = "\033[0m"
 
-            color_str = color_to_str(_color, self.info_hex_colors)
-            if self.info_colors:
-                color_str = f"{ color_start }{ color_str }{ color_end }"
+            columns = {
+                "idx": str(mutation.index),
+                "label": mutation.id,
+                "type": mutation.name,
+                "color_hex": color_to_str(_color, True),
+                "color_name": color_to_str(_color, False),
+                "f+": str(len(mutation.faces_added)),
+                "f~": str(len(mutation.faces_altered)),
+                "f-": str(len(mutation.faces_removed)),
+                "e+": str(len(mutation.edges_added)),
+                "e~": str(len(mutation.edges_altered)),
+                "e-": str(len(mutation.edges_removed)),
+            }
 
-            return (
-                str(mutation.index),
-                mutation.id,
-                mutation.name,
-                color_str,
-                str(len(mutation.faces_added)),
-                str(len(mutation.faces_altered)),
-                str(len(mutation.faces_removed)),
-                str(len(mutation.edges_added)),
-                str(len(mutation.edges_altered)),
-                str(len(mutation.edges_removed)),
+            return tuple(
+                (f"{ start }{ col }{ end }" if self.info_colors else col)
+                for header, col in columns.items()
+                if header in self.info_columns
             )
 
-        headers = ["Idx", "Id", "Type", "Color"]
-        headers += ["f+", "f~", "f-", "e+", "e~", "e-"]
+        headers = [header.title() for header in self.info_columns]
         table = [row(mutation) for mutation in self.mutations]
         str_table = tabulate(table, headers, tablefmt=self.info_table_style)
         print(str_table, file=file or stdout)
