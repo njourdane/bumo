@@ -40,16 +40,17 @@ class Builder:
     info_columns = ["idx", "label", "type", "f+", "f~", "f-", "e+", "e~", "e-"]
     """"The columns to display in fon table."""
 
-    def __init__(self, part: _.Part, color: ColorLike | None=None, debug=False):
-        self.object = part
+    def __init__(self):
+        self.object = _.Part(None)
         self.mutations: list[Mutation] = []
         self.debug_faces: dict[Hash, _.Color] = {}
-        self.mutate(self.__class__.__name__, part, color, debug)
 
     def __getitem__(self, mut_idx: int):
         return self.mutations[mut_idx]
 
     def __call__(self) -> list[_.Face]:
+        if not self.mutations:
+            raise ValueError("No mutation to show.")
         faces = self.mutations[-1].faces
         faces_color = self.get_faces_color()
 

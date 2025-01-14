@@ -29,47 +29,55 @@ Bumo is not a cad library on its own and does not aim to replace Build123d, you 
 
 ### Instantiating the builder
 
-First things first, let's instanciate a Bumo builder and pass a Build123d part into it. Note that we must call the object (`obj()`) when passing it to the show function.
+First, let's instanciate a Bumo builder. Note that we must call the object (`b()`) when passing it to the show function.
 
 ```py
 import build123d as _
 from ocp_vscode import show_object
 from bumo import Builder
 
-obj = Builder(_.Box(12, 12, 2))
+b = Builder()
 
-show_object(obj(), clear=True)
+show_object(b(), clear=True)
 ```
 
-![](./images/box.png)
+At this point you should get a `ValueError: No mutation to show.`, because, hem, there is no mutation to show.
+
+The import lines and show function will be the same in the next examples, so let's ignore them and focus on the builder-related code.
 
 ### Adding mutations
 
 When applying an operation, instead of returning a copy of the modified object, the builder mutates the object:
 
 ```py
-obj = Builder(_.Box(12, 12, 2))
-obj.add(_.Box(8, 8, 4))
-obj.sub(_.Cylinder(3, 4))
+b = Builder()
+b.add(_.Box(12, 12, 2))
+b.add(_.Box(8, 8, 4))
+b.sub(_.Cylinder(3, 4))
 ```
 
 ![](./images/base.png)
 
-Note that you can also pass an other builder to a mutation:
+## Alternative syntax
+
+Alternatively you can use the assignment operators:
 
 ```py
-obj = Builder(_.Box(12, 12, 2))
-obj2 = Builder(_.Box(8, 8, 4))
-obj.add(obj2)
-obj.sub(_.Cylinder(3, 4))
+b = Builder()
+b += _.Box(12, 12, 2) # fuse
+b += _.Box(8, 8, 4)
+b -= _.Cylinder(3, 4) # substract
+b &= _.Cylinder(5, 4) # intersect
 ```
+
+Note that their counterpart `+`, `-`, `&` are not allowed.
 
 ### Listing mutations
 
 You can print the list of mutations and their properties:
 
 ```py
-obj.info()
+b.info()
 ```
 
 The previous example will produce the following table:
@@ -89,24 +97,32 @@ With:
 You can move objects with `move()`, all colors will be preserved. Note that you can still use the Build123d `*` operator before passing the object to the builder.
 
 ```py
-obj = Builder(_.Box(12, 12, 2))
-obj.add(_.Box(8, 8, 4))
-obj.move(_.Location([-5, 2, 0]))
-obj.sub(_.Rotation(25, 25, 0) * _.Cylinder(2.5, 10))
+b = Builder()
+b.add(_.Box(12, 12, 2))
+b.add(_.Box(8, 8, 4))
+b.move(_.Location([-5, 2, 0]))
+b.sub(_.Rotation(25, 25, 0) * _.Cylinder(2.5, 10))
 ```
 
 ![](./images/move.png)
 
-### Reusing mutations
-
-Instead of returning a copy of the object, mutations return a `Mutation` object that can be used to retrieve the altered faces and edges. Mutations can also be accessed by querrying a builder index (ie. `obj[n]`). This is useful with fillets and chamfers:
+The affectation operator `*=` is available here:
 
 ```py
-obj = Builder(_.Box(12, 12, 2))
-obj.add(_.Box(8, 8, 4))
-obj.fillet(obj[-1].edges_added(), 0.4)
-hole = obj.sub(_.Cylinder(3, 4))
-obj.chamfer(hole.edges_added()[0], 0.3)
+b *= _.Location([-5, 2, 0])
+```
+
+### Reusing mutations
+
+Instead of returning a copy of the object, mutations return a `Mutation` object that can be used to retrieve the altered faces and edges. Mutations can also be accessed by querrying a builder index (ie. `b[n]`). This is useful with fillets and chamfers:
+
+```py
+b = Builder()
+b.add(_.Box(12, 12, 2))
+b.add(_.Box(8, 8, 4))
+b.fillet(b[-1].edges_added(), 0.4)
+hole = b.sub(_.Cylinder(3, 4))
+b.chamfer(hole.edges_added()[0], 0.3)
 ```
 
 ![](./images/chamfers_and_fillets.png)
@@ -116,9 +132,10 @@ obj.chamfer(hole.edges_added()[0], 0.3)
 On each mutation you can pass a specific color instead of the auto-generated-one:
 
 ```py
-obj = Builder(_.Box(12, 12, 2), "orange")
-obj.add(_.Box(8, 8, 4), "green")
-obj.sub(_.Cylinder(3, 4), "violet")
+b = Builder()
+b.add(_.Box(12, 12, 2), "orange")
+b.add(_.Box(8, 8, 4), "green")
+b.sub(_.Cylinder(3, 4), "violet")
 ```
 
 ![](./images/colors.png)
@@ -128,30 +145,32 @@ obj.sub(_.Cylinder(3, 4), "violet")
 You can turn one or several mutations in debug mode, so all the other faces will be translucent. Either by passing a debug attribute to mutations, or passing faces (even removed ones) to the debug method:
 
 ```py
-obj = Builder(_.Box(12, 12, 2))
-obj.add(_.Box(8, 8, 4))
-obj.fillet(obj[-1].edges_added(), 0.4)
-hole = obj.sub(_.Cylinder(3, 4))
-obj.chamfer(hole.edges_added()[0], 0.3, debug=True)
-obj.debug(obj[2].faces_altered()[0], "red")
-# obj.debug(hole.faces_removed(), "red")
+b = Builder()
+b.add(_.Box(12, 12, 2))
+b.add(_.Box(8, 8, 4))
+b.fillet(b[-1].edges_added(), 0.4)
+hole = b.sub(_.Cylinder(3, 4))
+b.chamfer(hole.edges_added()[0], 0.3, debug=True)
+b.debug(b[2].faces_altered()[0], "red")
+# b.debug(hole.faces_removed(), "red")
 ```
 
 ![](./images/debug.png)
 
-### Alternative syntax
+### Mutation with builders
 
-Alternatively you can use the operators `+=`, `-=`, `&=`, `*=` to add mutations. But beware that passing a color or debug mode will no longer be possible, neither storing the mutation to a variable (you can still get them with the `obj[n]` syntax):
+If necessary it is possible to pass an other builder to a mutation:
 
 ```py
-obj = Builder(_.Box(12, 12, 2))
-obj += _.Box(8, 8, 4) # fuse
-obj -= _.Cylinder(3, 4) # substract
-obj &= _.Cylinder(5, 4) # intersect
-obj *= _.Rotation(90) # move
-```
+b = Builder()
+b.add(_.Box(12, 12, 2))
 
-Note that their counterpart `+`, `-`, `&`, `*` are not allowed.
+obj2 = Builder()
+obj2.add(_.Box(8, 8, 4))
+
+b.add(obj2)
+b.sub(_.Cylinder(3, 4))
+```
 
 ### Configuring the builder
 
