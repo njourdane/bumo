@@ -8,7 +8,7 @@ from tabulate import tabulate
 
 from .mutation import Mutation
 from .colors import ColorLike, cast_color, color_to_str
-from .shapes import Hash, FaceListLike, EdgeListLike, FaceDict, EdgeDict
+from .shapes import Hash, FaceListLike, EdgeListLike, FaceDict, EdgeDict, hash_shape
 from .config import Config
 
 
@@ -75,7 +75,7 @@ class Builder:
     def get_face_mutation(self, face: _.Face | Hash) -> Mutation:
         """Retrieve the mutation who created the given face."""
 
-        _hash = Mutation.hash_shape(face) if isinstance(face, _.Face) else face
+        _hash = hash_shape(face) if isinstance(face, _.Face) else face
         for mutation in self.mutations:
             if _hash in mutation.faces:
                 return mutation
@@ -84,7 +84,7 @@ class Builder:
     def get_edge_mutation(self, edge: _.Edge | Hash) -> Mutation:
         """Retrieve the mutation who created the given edge."""
 
-        _hash = Mutation.hash_shape(edge) if isinstance(edge, _.Edge) else edge
+        _hash = hash_shape(edge) if isinstance(edge, _.Edge) else edge
         for mutation in self.mutations:
             if _hash in mutation.edges:
                 return mutation
@@ -153,12 +153,12 @@ class Builder:
             return faces
 
         if isinstance(faces, _.Face):
-            face_hash = 'f' if fake_hashes else Mutation.hash_shape(faces)
+            face_hash = 'f' if fake_hashes else hash_shape(faces)
             return FaceDict({face_hash: faces})
 
         faces_dict = FaceDict({})
         for idx, face in enumerate(faces):
-            face_hash = str(idx) if fake_hashes else Mutation.hash_shape(face)
+            face_hash = str(idx) if fake_hashes else hash_shape(face)
             faces_dict[face_hash] = face
         return faces_dict
 
@@ -171,12 +171,12 @@ class Builder:
             return edges
 
         if isinstance(edges, _.Edge):
-            edge_hash = 'f' if fake_hashes else Mutation.hash_shape(edges)
+            edge_hash = 'f' if fake_hashes else hash_shape(edges)
             return EdgeDict({edge_hash: edges})
 
         edges_dict = EdgeDict({})
         for idx, edge in enumerate(edges):
-            edge_hash = str(idx) if fake_hashes else Mutation.hash_shape(edge)
+            edge_hash = str(idx) if fake_hashes else hash_shape(edge)
             edges_dict[edge_hash] = edge
         return edges_dict
 
@@ -237,8 +237,8 @@ class Builder:
         faces_alias: dict[Hash, Hash] = {}
 
         for face in self.object.faces():
-            old_hash = Mutation.hash_shape(face)
-            new_hash = Mutation.hash_shape(location * face)
+            old_hash = hash_shape(face)
+            new_hash = hash_shape(location * face)
             faces_alias[new_hash] = old_hash
 
         return self.mutate('move', obj, color, debug, faces_alias)

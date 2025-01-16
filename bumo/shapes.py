@@ -1,6 +1,7 @@
 """A module used to store shapes-related stuff"""
 from enum import Enum
 from typing import TypeAlias, Iterable
+from hashlib import md5
 
 import build123d as _
 
@@ -16,6 +17,40 @@ class ShapeState(Enum):
     UNTOUCHED = 3
     REMOVED = 4
 
+def hash_shape(shape: _.Shape) -> Hash:
+    """Return a reproducible hash.
+    OCP 7.2 might produce better hashes that could make this unnecessary."""
+
+    def to_int(number: float) -> int:
+        return int(number * 1000)
+
+    def serialize_vertex(vertex: _.Vertex) -> tuple:
+        return tuple(to_int(v) for v in vertex.to_tuple())
+
+    def serialize_edge(edge: _.Edge) -> tuple:
+        vertices = tuple(serialize_vertex(v) for v in edge.vertices())
+        is_circle = edge.geom_type == _.GeomType.CIRCLE
+        radius = to_int(edge.radius) if is_circle else 0
+        return (edge.geom_type, vertices, radius)
+
+    def serialize_face(face: _.Face) -> tuple:
+        return tuple(serialize_edge(edge) for edge in face.edges())
+
+    def serialize_part(part: _.Part) -> tuple:
+        return tuple(serialize_face(face) for face in part.faces())
+
+    if isinstance(shape, _.Vertex):
+        serialized = serialize_vertex(shape)
+    elif isinstance(shape, _.Edge):
+        serialized = serialize_edge(shape)
+    elif isinstance(shape, _.Face):
+        serialized = serialize_face(shape)
+    elif isinstance(shape, _.Part):
+        serialized = serialize_part(shape)
+    else:
+        raise TypeError
+
+    return md5(str(serialized).encode()).hexdigest()
 
 class EdgeDict(dict):
     """A custom dictionnary used to store edges by their hash.
