@@ -39,22 +39,23 @@ def color_to_str(color: _.Color, as_hex=False) -> str:
 
 class ColorPalette(Enum):
     "The name of predefined color palettes."
+    NONE = -1
     VIRIDIS = 0
     INFERNO = 1
     MAGMA = 2
     PLASMA = 3
 
-    def get_palette(self):
-        """Return the color palette related to the enum value."""
-        palettes = [viridis, inferno, magma, plasma]
-        return palettes[self.value]
-
     def build_palette(self, amount: int) -> list[_.Color]:
         """Build a list of colors based on the given palette and the amount of
         colors."""
 
+        if self == ColorPalette.NONE:
+            return []
+
+        palette = [viridis, inferno, magma, plasma][self.value]
+
         def get_color(index: int) -> _.Color:
-            color_int = self.get_palette()[index]
+            color_int = palette[index]
             color_hex = hex(color_int)[2:].rjust(6, '0')
             color_tuple = struct.unpack('BBB', bytes.fromhex(color_hex))
             return _.Color(tuple(c/256 for c in color_tuple))

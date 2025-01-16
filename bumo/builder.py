@@ -7,40 +7,21 @@ import build123d as _
 from tabulate import tabulate
 
 from .mutation import Mutation
-from .colors import ColorLike, ColorPalette, cast_color, color_to_str
+from .colors import ColorLike, cast_color, color_to_str
 from .shapes import Hash, FaceListLike, EdgeListLike, FaceDict, EdgeDict
+from .config import Config
 
 
 class Builder:
-    """A class used to manipulated Build123d objects that keeps track of each
-    performed mutation and manage shape colors."""
+    """A class used to manipulate Build123d objects that keeps track of each
+    mutation and manage shape colors."""
 
-    autocolor = True
-    "Set to True to automatically set a color on each mutation based."
+    config = Config()
 
-    color_palette = ColorPalette.VIRIDIS
-    "The color palette to use when auto_color is enabled."
+    def __init__(self, **kwargs):
+        for config_key, config_value in kwargs.items():
+            setattr(self.config, config_key, config_value)
 
-    debug_alpha = 0.2
-    "The alpha values used for translucent shapes in debug mode."
-
-    default_color: ColorLike = "orange"
-    "The default color to be used when a color is passed to a mutation."
-
-    default_debug_color: ColorLike = "red"
-    "The default color to be used when using the debug mode."
-
-    info_colors = True
-    "Set to False to disable terminal colors in the info table."
-
-    info_table_style = "fancy_outline"
-    """The table format used in the info table.
-    See https://github.com/astanin/python-tabulate?tab=readme-ov-file#table-format"""
-
-    info_columns = ["idx", "label", "type", "f+", "f~", "f-", "e+", "e~", "e-"]
-    """"The columns to display in fon table."""
-
-    def __init__(self):
         self.object = _.Part(None)
         self.mutations: list[Mutation] = []
         self.debug_faces: dict[Hash, _.Color] = {}
@@ -59,7 +40,7 @@ class Builder:
                 faces[debug_hash] = self.get_face(debug_hash)
 
         for face_hash, face in faces.items():
-            face.color = faces_color[face_hash] or self.default_color
+            face.color = faces_color[face_hash] or self.config.default_color
             face.label = face_hash[:6]
 
         return list(faces.values())
@@ -114,11 +95,7 @@ class Builder:
         object."""
 
         faces_color: dict[Hash, _.Color] = {}
-        palette = (
-            self.color_palette.build_palette(len(self.mutations))
-            if self.autocolor
-            else []
-        )
+        palette = self.config.color_palette.build_palette(len(self.mutations))
 
         for mut in self.mutations:
 
@@ -131,14 +108,14 @@ class Builder:
                     old_hash = mut.faces_alias[face_hash]
                     color = faces_color[old_hash]
 
-                faces_color[face_hash] = color or cast_color(self.default_color)
+                faces_color[face_hash] = color or self.config.default_color
 
             rm_colors = {faces_color[rm_hash] for rm_hash in mut.faces_removed}
 
             if len(rm_colors) == 1:
                 rm_color = (
                     rm_colors.pop() if len(rm_colors) == 1
-                    else cast_color(self.default_color)
+                    else self.config.default_color
                 )
                 for face_hash in mut.faces_altered:
                     faces_color[face_hash] = rm_color
@@ -153,8 +130,9 @@ class Builder:
                 if face_hash in self.debug_faces:
                     faces_color[face_hash] = self.debug_faces[face_hash]
                 else:
-                    r, v, b = cast_color(color).to_tuple()[:3]
-                    faces_color[face_hash] = _.Color(r, v, b, self.debug_alpha)
+                    r, v, b = color.to_tuple()[:3]
+                    a = self.config.debug_alpha
+                    faces_color[face_hash] = _.Color(r, v, b, a)
 
         return faces_color
 
@@ -208,8 +186,8 @@ class Builder:
         return part if isinstance(part, _.Part) else part.object
 
     @classmethod
-    def _part_color(cls, part: Builder | _.Part) -> ColorLike|None:
-        """Retrieve the color of the current object."""
+    def _part_color(cls, part: Builder | _.Part) -> _.Color|None:
+        """Retrieve the color of the given object."""
 
         if isinstance(part, Builder) and len(part.mutations) == 1:
             return part.mutations[-1].color
@@ -227,7 +205,7 @@ class Builder:
         a mutation with the given name, color and debug mode."""
 
         self.object = obj
-        _color = cast_color(color if color else self.default_debug_color)
+        _color = cast_color(color) if color else self.config.default_debug_color
 
         mutation = Mutation(
             obj,
@@ -334,53 +312,50 @@ class Builder:
     def info(self, file=None):
         """Print the list of mutations to the given file (stdout by default)."""
 
-        palette = (
-            self.color_palette.build_palette(len(self.mutations))
-            if self.autocolor
-            else []
-        )
+        palette = self.config.color_palette.build_palette(len(self.mutations))
 
-        def row(mutation: Mutation) -> tuple:
+        def row(mut: Mutation) -> tuple:
             color = (
-                palette[mutation.index] if palette and not mutation.color
-                else mutation.color
+                palette[mut.index] if palette and not mut.color
+                else (mut.color or self.config.default_color)
             )
-            _color = color or cast_color(self.default_color)
-            r, g, b = [int(c * 255) for c in _color.to_tuple()[:3]]
+            r, g, b = [int(c * 255) for c in color.to_tuple()[:3]]
 
             start = f"\033[38;2;{ r };{ g };{ b }m"
             end = "\033[0m"
 
             columns = {
-                "idx": str(mutation.index),
-                "label": mutation.id,
-                "type": mutation.name,
-                "color_hex": color_to_str(_color, True),
-                "color_name": color_to_str(_color, False),
-                "f+": str(len(mutation.faces_added)),
-                "f~": str(len(mutation.faces_altered)),
-                "f-": str(len(mutation.faces_removed)),
-                "e+": str(len(mutation.edges_added)),
-                "e~": str(len(mutation.edges_altered)),
-                "e-": str(len(mutation.edges_removed)),
+                "idx": str(mut.index),
+                "label": mut.id,
+                "type": mut.name,
+                "color_hex": color_to_str(color, True),
+                "color_name": color_to_str(color, False),
+                "f+": str(len(mut.faces_added)),
+                "f~": str(len(mut.faces_altered)),
+                "f-": str(len(mut.faces_removed)),
+                "e+": str(len(mut.edges_added)),
+                "e~": str(len(mut.edges_altered)),
+                "e-": str(len(mut.edges_removed)),
             }
 
             return tuple(
-                (f"{ start }{ col }{ end }" if self.info_colors else col)
+                (f"{ start }{ col }{ end }" if self.config.info_colors else col)
                 for header, col in columns.items()
-                if header in self.info_columns
+                if header in self.config.info_columns
             )
 
-        headers = [header.title() for header in self.info_columns]
-        table = [row(mutation) for mutation in self.mutations]
-        str_table = tabulate(table, headers, tablefmt=self.info_table_style)
+        str_table = tabulate(
+            [row(mutation) for mutation in self.mutations],
+            [header.title() for header in self.config.info_columns],
+            self.config.info_table_format
+        )
         print(str_table, file=file or stdout)
 
     def debug(self, faces: FaceListLike, color: ColorLike | None=None):
         """Set a face for debugging, so it will appear in the given color while
         the rest of the object will be translucent."""
 
-        _color = cast_color(color if color else self.default_debug_color)
+        _color = cast_color(color) if color else self.config.default_debug_color
         for face_hash in self._cast_faces(faces):
             self.debug_faces[face_hash] = _color
 
@@ -406,4 +381,10 @@ class Builder:
         ):
         """Export the current object in STL format to the given file path,
         with the given tolerance, angular tolerance and ascii format mode."""
-        _.export_stl(self.object, file_path, tolerance, angular_tolerance, ascii_format)
+        _.export_stl(
+            self.object,
+            file_path,
+            tolerance,
+            angular_tolerance,
+            ascii_format
+        )
