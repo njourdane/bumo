@@ -4,7 +4,7 @@ from __future__ import annotations
 import build123d as _
 
 from .colors import cast_color
-from .shapes import Hash, ShapeState, FaceDict, EdgeDict, hash_shape
+from .shapes import Hash, ShapeState, FaceDict, EdgeDict, hash_shape, ShapeList
 
 
 class Mutation:
@@ -27,21 +27,21 @@ class Mutation:
 
         self.id = f"{ name }-{ index }"
 
-        self.faces = FaceDict({hash_shape(f): f for f in obj.faces()})
+        self.faces = FaceDict({f.label: f for f in ShapeList(obj.faces())})
         self.faces_state = self.get_faces_state()
         self.faces_added = self.filter_faces(ShapeState.ADDED)
         self.faces_altered = self.filter_faces(ShapeState.ALTERED)
         self.faces_untouched = self.filter_faces(ShapeState.UNTOUCHED)
         self.faces_removed = self.filter_faces(ShapeState.REMOVED)
 
-        self.edges = EdgeDict({hash_shape(e): e for e in obj.edges()})
+        self.edges = EdgeDict({e.label: e for e in ShapeList(obj.edges())})
         self.edges_state = self.get_edges_state()
         self.edges_added = self.filter_edges(ShapeState.ADDED)
         self.edges_altered = self.filter_edges(ShapeState.ALTERED)
         self.edges_untouched = self.filter_edges(ShapeState.UNTOUCHED)
         self.edges_removed = self.filter_edges(ShapeState.REMOVED)
 
-        self.vertices = {hash_shape(v): v for v in obj.vertices()}
+        self.vertices = {v.label: v for v in ShapeList(obj.vertices())}
 
     def __repr__(self):
         return self.id

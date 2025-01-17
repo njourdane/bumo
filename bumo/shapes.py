@@ -52,6 +52,37 @@ def hash_shape(shape: _.Shape) -> Hash:
 
     return md5(str(serialized).encode()).hexdigest()
 
+
+def add_hash(shape: _.Shape) -> _.Shape:
+    """Add the hash of the given shape to the shape label."""
+    if not shape.label:
+        shape.label = hash_shape(shape)
+    return shape
+
+
+class ShapeList(_.ShapeList):
+    """A custom ShapeList that automatically adds a hash to the shape label,
+    and with some extra methods."""
+
+    def __init__(self, iterable):
+        super().__init__(add_hash(shape) for shape in iterable)
+
+    def __setitem__(self, index, item):
+        super().__setitem__(index, add_hash(item))
+
+    def insert(self, index, item):
+        super().insert(index, add_hash(item))
+
+    def append(self, item):
+        super().append(add_hash(item))
+
+    def extend(self, other):
+        if isinstance(other, type(self)):
+            super().extend(other)
+        else:
+            super().extend(add_hash(item) for item in other)
+
+
 class EdgeDict(dict):
     """A custom dictionnary used to store edges by their hash.
     If the dict is called ie. `my_edges()`, a list is returned."""
@@ -65,8 +96,8 @@ class EdgeDict(dict):
     def __getitem__(self, edge_hash: Hash) -> _.Edge:
         return super().__getitem__(edge_hash)
 
-    def __call__(self) -> _.ShapeList:
-        return _.ShapeList(self.values())
+    def __call__(self) -> ShapeList:
+        return ShapeList(self.values())
 
 
 class FaceDict(dict):
@@ -82,8 +113,8 @@ class FaceDict(dict):
     def __getitem__(self, face_hash: Hash) -> _.Face:
         return super().__getitem__(face_hash)
 
-    def __call__(self) -> _.ShapeList:
-        return _.ShapeList(self.values())
+    def __call__(self) -> ShapeList:
+        return ShapeList(self.values())
 
 
 FaceListLike: TypeAlias = FaceDict | Iterable[_.Face] | _.Face

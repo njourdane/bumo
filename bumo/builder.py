@@ -8,7 +8,7 @@ from tabulate import tabulate
 
 from .mutation import Mutation
 from .colors import ColorLike, cast_color, color_to_str
-from .shapes import Hash, FaceListLike, EdgeListLike, FaceDict, EdgeDict, hash_shape
+from .shapes import Hash, FaceListLike, EdgeListLike, FaceDict, EdgeDict, add_hash, ShapeList
 from . import config
 
 
@@ -71,7 +71,7 @@ class Builder:
     def get_face_mutation(self, face: _.Face | Hash) -> Mutation:
         """Retrieve the mutation who created the given face."""
 
-        _hash = hash_shape(face) if isinstance(face, _.Face) else face
+        _hash = add_hash(face).label if isinstance(face, _.Face) else face
         for mutation in self.mutations:
             if _hash in mutation.faces:
                 return mutation
@@ -80,7 +80,7 @@ class Builder:
     def get_edge_mutation(self, edge: _.Edge | Hash) -> Mutation:
         """Retrieve the mutation who created the given edge."""
 
-        _hash = hash_shape(edge) if isinstance(edge, _.Edge) else edge
+        _hash = add_hash(edge).label if isinstance(edge, _.Edge) else edge
         for mutation in self.mutations:
             if _hash in mutation.edges:
                 return mutation
@@ -140,39 +140,37 @@ class Builder:
         return None
 
     @classmethod
-    def _cast_faces(cls, faces: FaceListLike, fake_hashes=False) -> FaceDict:
-        """Cast the given faces to a FaceDict. If hashes are not used, set
-        `fake_hashes` to True for better performance."""
+    def _cast_faces(cls, faces: FaceListLike) -> FaceDict:
+        """Cast the given faces to a FaceDict."""
 
         if isinstance(faces, FaceDict):
             return faces
 
         if isinstance(faces, _.Face):
-            face_hash = 'f' if fake_hashes else hash_shape(faces)
-            return FaceDict({face_hash: faces})
+            face = add_hash(faces)
+            return FaceDict({face.label: face})
 
         faces_dict = FaceDict({})
-        for idx, face in enumerate(faces):
-            face_hash = str(idx) if fake_hashes else hash_shape(face)
-            faces_dict[face_hash] = face
+        for face in faces:
+            face = add_hash(face)
+            faces_dict[face.label] = face
         return faces_dict
 
     @classmethod
-    def _cast_edges(cls, edges: EdgeListLike, fake_hashes=False) -> EdgeDict:
-        """Cast the given edges an EdgeDict. If hashes are not used, set
-        `fake_hashes` to True for better performance."""
+    def _cast_edges(cls, edges: EdgeListLike) -> EdgeDict:
+        """Cast the given edges an EdgeDict."""
 
         if isinstance(edges, EdgeDict):
             return edges
 
         if isinstance(edges, _.Edge):
-            edge_hash = 'f' if fake_hashes else hash_shape(edges)
-            return EdgeDict({edge_hash: edges})
+            edge = add_hash(edges)
+            return EdgeDict({edge.label: edge})
 
         edges_dict = EdgeDict({})
-        for idx, edge in enumerate(edges):
-            edge_hash = str(idx) if fake_hashes else hash_shape(edge)
-            edges_dict[edge_hash] = edge
+        for edge in edges:
+            edge = add_hash(edge)
+            edges_dict[edge.label] = edge
         return edges_dict
 
     @classmethod
@@ -233,10 +231,9 @@ class Builder:
         obj = location * self.object
         faces_alias: dict[Hash, Hash] = {}
 
-        for face in self.object.faces():
-            old_hash = hash_shape(face)
-            new_hash = hash_shape(location * face)
-            faces_alias[new_hash] = old_hash
+        for face in ShapeList(self.object.faces()):
+            face_moved = add_hash(location * face)
+            faces_alias[face_moved.label] = face.label
 
         return self.mutate('move', obj, color, debug, faces_alias)
 
@@ -286,7 +283,7 @@ class Builder:
         """Mutation: apply a fillet of the given radius to the given edges of
         the current object, with the given color and debug mode."""
 
-        edges = self._cast_edges(edges, fake_hashes=True)()
+        edges = self._cast_edges(edges)()
         obj = self.object.fillet(radius, edges)
         return self.mutate('fillet', obj, color, debug)
 
@@ -302,7 +299,7 @@ class Builder:
         """Mutation: apply a chamfer of the given length to the given edges of
         the current object, with the given color and debug mode."""
 
-        edges = self._cast_edges(edges, fake_hashes=True)()
+        edges = self._cast_edges(edges)()
         obj = self.object.chamfer(length, length2, edges, face) # type: ignore
         return self.mutate('chamfer', obj, color, debug)
 
@@ -338,12 +335,12 @@ class Builder:
             return tuple(
                 (f"{ start }{ col }{ end }" if config.INFO_COLOR else col)
                 for header, col in columns.items()
-                if header in config.INFO_COLUMNS
+                if header in config.COLUMNS_MUTATIONS
             )
 
         str_table = tabulate(
             [row(mutation) for mutation in self.mutations],
-            [header.title() for header in config.INFO_COLUMNS],
+            [header.title() for header in config.COLUMNS_MUTATIONS],
             config.INFO_TABLE_FORMAT
         )
         print(str_table, file=file or stdout)

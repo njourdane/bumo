@@ -24,5 +24,10 @@ INFO_TABLE_FORMAT = "fancy_outline"
 https://github.com/astanin/python-tabulate?tab=readme-ov-file#table-format
 """
 
-INFO_COLUMNS = ["idx", "label", "type", "f+", "f~", "f-", "e+", "e~", "e-"]
-""""The columns to display in info tables."""
+COLUMNS_MUTATIONS = ["idx", "label", "type", "f+", "f~", "f-", "e+", "e~", "e-"]
+""""The columns to display in mutations info tables, among:
+idx, label, type, color_hex, color_name, f+, f~, f-, e+, e~, e-."""
+
+COLUMNS_SHAPES = ["hash", "type", "area"]
+""""The columns to display in shapes info tables, among:
+hash, type, area, color_hex, color_name."""
