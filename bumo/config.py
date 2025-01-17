@@ -28,6 +28,6 @@ COLUMNS_MUTATIONS = ["idx", "label", "type", "f+", "f~", "f-", "e+", "e~", "e-"]
 """"The columns to display in mutations info tables, among:
 idx, label, type, color_hex, color_name, f+, f~, f-, e+, e~, e-."""
 
-COLUMNS_SHAPES = ["hash", "type", "area"]
+COLUMNS_SHAPES = ["hash", "type", "area", "position", "orientation"]
 """"The columns to display in shapes info tables, among:
 hash, type, area, color_hex, color_name."""

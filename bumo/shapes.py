@@ -1,9 +1,14 @@
 """A module used to store shapes-related stuff"""
 from enum import Enum
-from typing import TypeAlias, Iterable
+from typing import TypeAlias, Iterable, TextIO
 from hashlib import md5
+from sys import stdout
 
+from tabulate import tabulate
 import build123d as _
+
+from . import config
+from .colors import color_to_str
 
 
 Hash: TypeAlias = str
@@ -81,6 +86,43 @@ class ShapeList(_.ShapeList):
             super().extend(other)
         else:
             super().extend(add_hash(item) for item in other)
+
+    def info(self, file: TextIO|None=None):
+        """Prints an info table of all the shapes to the given file or stream
+        (default to stdout)"""
+
+        def str_vector(vector: _.Vector) -> str:
+            return f"[{', '.join([f'{ n :.1g}' for n in vector.to_tuple()])}]"
+
+        def row(shape: _.Shape) -> tuple:
+            color = shape.color or config.DEFAULT_COLOR
+            r, g, b = [int(c * 255) for c in color.to_tuple()[:3]]
+
+            start = f"\033[38;2;{ r };{ g };{ b }m"
+            end = "\033[0m"
+
+            columns = {
+                "hash": shape.label[:6],
+                "type": shape.geom_type,
+                "area": f"{ shape.area :.2g}",
+                "position": str_vector(shape.position),
+                "orientation": str_vector(shape.orientation),
+                "color_hex": color_to_str(color, True),
+                "color_name": color_to_str(color, False),
+            }
+
+            return tuple(
+                (f"{ start }{ color }{ end }" if config.INFO_COLOR else color)
+                for header, color in columns.items()
+                if header in config.COLUMNS_SHAPES
+            )
+
+        str_table = tabulate(
+            [row(shape) for shape in self],
+            [header.title() for header in config.COLUMNS_SHAPES],
+            config.INFO_TABLE_FORMAT
+        )
+        print(str_table, file=file or stdout)
 
 
 class EdgeDict(dict):

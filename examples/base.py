@@ -12,4 +12,5 @@ hole = b.sub(_.Cylinder(3, 4))
 b.chamfer(hole.edges_added().first, 0.3)
 
 b.info()
+hole.faces_added().info()
 show_object(b(), clear=True, tools=False, glass=False, black_edges=True)
