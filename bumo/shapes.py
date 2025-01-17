@@ -65,8 +65,8 @@ class EdgeDict(dict):
     def __getitem__(self, edge_hash: Hash) -> _.Edge:
         return super().__getitem__(edge_hash)
 
-    def __call__(self) -> list[_.Edge]:
-        return list(self.values())
+    def __call__(self) -> _.ShapeList:
+        return _.ShapeList(self.values())
 
 
 class FaceDict(dict):
@@ -82,8 +82,8 @@ class FaceDict(dict):
     def __getitem__(self, face_hash: Hash) -> _.Face:
         return super().__getitem__(face_hash)
 
-    def __call__(self) -> list[_.Face]:
-        return list(self.values())
+    def __call__(self) -> _.ShapeList:
+        return _.ShapeList(self.values())
 
 
 FaceListLike: TypeAlias = FaceDict | Iterable[_.Face] | _.Face
