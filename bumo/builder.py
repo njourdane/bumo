@@ -9,18 +9,14 @@ from tabulate import tabulate
 from .mutation import Mutation
 from .colors import ColorLike, cast_color, color_to_str
 from .shapes import Hash, FaceListLike, EdgeListLike, FaceDict, EdgeDict, hash_shape
-from .config import Config
+from . import config
 
 
 class Builder:
     """A class used to manipulate Build123d objects that keeps track of each
     mutation and manage shape colors."""
 
-    config = Config()
-
-    def __init__(self, **kwargs):
-        for config_key, config_value in kwargs.items():
-            setattr(self.config, config_key, config_value)
+    def __init__(self):
 
         self.object = _.Part(None)
         self.mutations: list[Mutation] = []
@@ -40,7 +36,7 @@ class Builder:
                 faces[debug_hash] = self.get_face(debug_hash)
 
         for face_hash, face in faces.items():
-            face.color = faces_color[face_hash] or self.config.default_color
+            face.color = faces_color[face_hash] or config.DEFAULT_COLOR
             face.label = face_hash[:6]
 
         return list(faces.values())
@@ -95,7 +91,7 @@ class Builder:
         object."""
 
         faces_color: dict[Hash, _.Color] = {}
-        palette = self.config.color_palette.build_palette(len(self.mutations))
+        palette = config.COLOR_PALETTE.build_palette(len(self.mutations))
 
         for mut in self.mutations:
 
@@ -108,14 +104,14 @@ class Builder:
                     old_hash = mut.faces_alias[face_hash]
                     color = faces_color[old_hash]
 
-                faces_color[face_hash] = color or self.config.default_color
+                faces_color[face_hash] = color or config.DEFAULT_COLOR
 
             rm_colors = {faces_color[rm_hash] for rm_hash in mut.faces_removed}
 
             if len(rm_colors) == 1:
                 rm_color = (
                     rm_colors.pop() if len(rm_colors) == 1
-                    else self.config.default_color
+                    else config.DEFAULT_COLOR
                 )
                 for face_hash in mut.faces_altered:
                     faces_color[face_hash] = rm_color
@@ -131,8 +127,7 @@ class Builder:
                     faces_color[face_hash] = self.debug_faces[face_hash]
                 else:
                     r, v, b = color.to_tuple()[:3]
-                    a = self.config.debug_alpha
-                    faces_color[face_hash] = _.Color(r, v, b, a)
+                    faces_color[face_hash] = _.Color(r, v, b, config.DEBUG_ALPHA)
 
         return faces_color
 
@@ -205,7 +200,7 @@ class Builder:
         a mutation with the given name, color and debug mode."""
 
         self.object = obj
-        _color = cast_color(color) if color else self.config.default_debug_color
+        _color = cast_color(color)
 
         mutation = Mutation(
             obj,
@@ -218,7 +213,9 @@ class Builder:
 
         if debug:
             for face_hash in mutation.faces_added:
-                self.debug_faces[face_hash] = _color
+                self.debug_faces[face_hash] = (
+                    _color if color else config.DEFAULT_DEBUG_COLOR
+                )
 
         self.mutations.append(mutation)
         return mutation
@@ -312,12 +309,12 @@ class Builder:
     def info(self, file=None):
         """Print the list of mutations to the given file (stdout by default)."""
 
-        palette = self.config.color_palette.build_palette(len(self.mutations))
+        palette = config.COLOR_PALETTE.build_palette(len(self.mutations))
 
         def row(mut: Mutation) -> tuple:
             color = (
                 palette[mut.index] if palette and not mut.color
-                else (mut.color or self.config.default_color)
+                else (mut.color or config.DEFAULT_COLOR)
             )
             r, g, b = [int(c * 255) for c in color.to_tuple()[:3]]
 
@@ -339,15 +336,15 @@ class Builder:
             }
 
             return tuple(
-                (f"{ start }{ col }{ end }" if self.config.info_colors else col)
+                (f"{ start }{ col }{ end }" if config.INFO_COLOR else col)
                 for header, col in columns.items()
-                if header in self.config.info_columns
+                if header in config.INFO_COLUMNS
             )
 
         str_table = tabulate(
             [row(mutation) for mutation in self.mutations],
-            [header.title() for header in self.config.info_columns],
-            self.config.info_table_format
+            [header.title() for header in config.INFO_COLUMNS],
+            config.INFO_TABLE_FORMAT
         )
         print(str_table, file=file or stdout)
 
@@ -355,7 +352,7 @@ class Builder:
         """Set a face for debugging, so it will appear in the given color while
         the rest of the object will be translucent."""
 
-        _color = cast_color(color) if color else self.config.default_debug_color
+        _color = cast_color(color) if color else config.DEFAULT_DEBUG_COLOR
         for face_hash in self._cast_faces(faces):
             self.debug_faces[face_hash] = _color
 

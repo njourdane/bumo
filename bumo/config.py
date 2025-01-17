@@ -1,48 +1,28 @@
-from dataclasses import dataclass
+"""Bumo configuration variables."""
 
 from build123d import Color
-from .colors import ColorPalette, ColorLike, cast_color
+from .colors import ColorPalette
 
 
-@dataclass
-class Config:
-    """A data class used to store configuration values."""
+COLOR_PALETTE = ColorPalette.VIRIDIS
+"The color palette to use when auto_color is enabled."
 
-    color_palette = ColorPalette.VIRIDIS
-    "The color palette to use when auto_color is enabled."
+DEBUG_ALPHA = 0.2
+"The alpha value used for translucent shapes in debug mode."
 
-    debug_alpha = 0.2
-    "The alpha value used for translucent shapes in debug mode."
+DEFAULT_COLOR = Color("orange")
+"The default color to be used when a color is passed to a mutation."
 
-    _default_color = Color("orange")
+DEFAULT_DEBUG_COLOR = Color("red")
+"The default color to be used when using the debug mode."
 
-    @property
-    def default_color(self) -> Color:
-        "The default color to be used when a color is passed to a mutation."
-        return self._default_debug_color
+INFO_COLOR = True
+"Set to False to disable terminal colors in the info table."
 
-    @default_color.setter
-    def default_color(self, value: ColorLike):
-        self._default_color = cast_color(value)
+INFO_TABLE_FORMAT = "fancy_outline"
+"""The table format used in the info table. See
+https://github.com/astanin/python-tabulate?tab=readme-ov-file#table-format
+"""
 
-    _default_debug_color = Color("red")
-
-    @property
-    def default_debug_color(self) -> Color:
-        "The default color to be used when using the debug mode."
-        return self._default_debug_color
-
-    @default_debug_color.setter
-    def default_debug_color(self, value: ColorLike):
-        self._default_debug_color = cast_color(value)
-
-    info_colors = True
-    "Set to False to disable terminal colors in the info table."
-
-    info_table_format = "fancy_outline"
-    """The table format used in the info table. See
-    https://github.com/astanin/python-tabulate?tab=readme-ov-file#table-format
-    """
-
-    info_columns = ["idx", "label", "type", "f+", "f~", "f-", "e+", "e~", "e-"]
-    """"The columns to display in info tables."""
+INFO_COLUMNS = ["idx", "label", "type", "f+", "f~", "f-", "e+", "e~", "e-"]
+""""The columns to display in info tables."""

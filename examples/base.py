@@ -1,7 +1,8 @@
 import build123d as _
 from ocp_vscode import show_object
-from bumo import Builder
+from bumo import Builder, config
 
+config.DEFAULT_COLOR = _.Color("orange")
 
 b = Builder()
 b.add(_.Box(12, 12, 2))
