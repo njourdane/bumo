@@ -29,15 +29,30 @@ class Builder:
         if not self.mutations:
             raise ValueError("No mutation to show.")
         faces = self.mutations[-1].faces
-        faces_color = self.get_faces_color()
+        faces_mutations = self.get_faces_mutations()
 
         for debug_hash in self.debug_faces:
             if debug_hash not in faces:
                 faces[debug_hash] = self.get_face(debug_hash)
 
+        palette = config.COLOR_PALETTE.build_palette(len(self.mutations))
         for face_hash, face in faces.items():
-            face.color = faces_color[face_hash] or config.DEFAULT_COLOR
+            mut = self.mutations[faces_mutations[face_hash]]
+            color = (
+                palette[mut.index] if palette and not mut.color
+                else mut.color
+            )
+            face.color = color or config.DEFAULT_COLOR
             face.label = face_hash[:6]
+
+        if self.debug_faces:
+            for face_hash, mut_idx in faces_mutations.items():
+                if face_hash in self.debug_faces:
+                    color = self.debug_faces[face_hash]
+                else:
+                    color = self.mutations[mut_idx].color or config.DEFAULT_COLOR
+                    r, v, b = color.to_tuple()[:3]
+                    color = _.Color(r, v, b, config.DEBUG_ALPHA)
 
         return list(faces.values())
 
@@ -86,58 +101,43 @@ class Builder:
                 return mutation
         raise ValueError
 
-    def get_faces_color(self) -> dict[Hash, _.Color]:
+    def get_faces_mutations(self) -> dict[Hash, int]:
         """Return a dictionnary containing the color of each face of the current
         object."""
 
-        faces_color: dict[Hash, _.Color] = {}
-        palette = config.COLOR_PALETTE.build_palette(len(self.mutations))
+        faces_mutations: dict[Hash, int] = {}
 
-        for mut in self.mutations:
+        for mutation in self.mutations:
 
-            for face_hash in mut.faces_added:
-                color = (
-                    palette[mut.index] if palette and not mut.color
-                    else mut.color
+            for face_hash in mutation.faces_added:
+                faces_mutations[face_hash] = (
+                    faces_mutations[mutation.faces_alias[face_hash]]
+                    if mutation.faces_alias
+                    else mutation.index
                 )
-                if mut.faces_alias:
-                    old_hash = mut.faces_alias[face_hash]
-                    color = faces_color[old_hash]
 
-                faces_color[face_hash] = color or config.DEFAULT_COLOR
+            rm_muts = {faces_mutations[rm_h] for rm_h in mutation.faces_removed}
 
-            rm_colors = {faces_color[rm_hash] for rm_hash in mut.faces_removed}
+            if len(rm_muts) == 1:
+                rm_color = rm_muts.pop()
 
-            if len(rm_colors) == 1:
-                rm_color = (
-                    rm_colors.pop() if len(rm_colors) == 1
-                    else config.DEFAULT_COLOR
-                )
-                for face_hash in mut.faces_altered:
-                    faces_color[face_hash] = rm_color
+                for face_hash in mutation.faces_altered:
+                    faces_mutations[face_hash] = rm_color
             else:
-                for al_hash, al_face in mut.faces_altered.items():
-                    for rm_hash, rm_face in mut.faces_removed.items():
+                for al_hash, al_face in mutation.faces_altered.items():
+                    for rm_hash, rm_face in mutation.faces_removed.items():
                         if Mutation.is_altered_faces(al_face, rm_face):
-                            faces_color[al_hash] = faces_color[rm_hash]
+                            faces_mutations[al_hash] = faces_mutations[rm_hash]
 
-        if self.debug_faces:
-            for face_hash, color in faces_color.items():
-                if face_hash in self.debug_faces:
-                    faces_color[face_hash] = self.debug_faces[face_hash]
-                else:
-                    r, v, b = color.to_tuple()[:3]
-                    faces_color[face_hash] = _.Color(r, v, b, config.DEBUG_ALPHA)
+        return faces_mutations
 
-        return faces_color
-
-    def get_mutation(self, mutation_id: str) -> Mutation | None:
+    def get_mutation(self, mutation_id: str) -> Mutation:
         """Return the mutation identified by the given id."""
 
         for mutation in self.mutations:
             if mutation.id == mutation_id:
                 return mutation
-        return None
+        raise KeyError
 
     @classmethod
     def _cast_faces(cls, faces: FaceListLike) -> FaceDict:
