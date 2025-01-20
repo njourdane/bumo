@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import build123d as _
 
-from .shapes import Hash, ShapeState, FaceDict, EdgeDict, hash_shape, ShapeList
+from .shapes import Hash, ShapeState, hash_shape, ShapeList, ShapeLike
 
 
 class Mutation:
@@ -24,46 +24,78 @@ class Mutation:
 
         self.id = f"{ name }-{ index }"
 
-        self.faces = FaceDict({f.label: f for f in ShapeList(obj.faces())})
-        self.faces_state = self.get_faces_state()
-        self.faces_added = self.filter_faces(ShapeState.ADDED)
-        self.faces_altered = self.filter_faces(ShapeState.ALTERED)
-        self.faces_untouched = self.filter_faces(ShapeState.UNTOUCHED)
-        self.faces_removed = self.filter_faces(ShapeState.REMOVED)
+        self.faces = ShapeList(obj.faces())
+        self.faces_state = self.get_shapes_state(_.Face)
 
-        self.edges = EdgeDict({e.label: e for e in ShapeList(obj.edges())})
-        self.edges_state = self.get_edges_state()
-        self.edges_added = self.filter_edges(ShapeState.ADDED)
-        self.edges_altered = self.filter_edges(ShapeState.ALTERED)
-        self.edges_untouched = self.filter_edges(ShapeState.UNTOUCHED)
-        self.edges_removed = self.filter_edges(ShapeState.REMOVED)
+        self.faces_added = self.filter_shapes(ShapeState.ADDED, _.Face)
+        self.faces_altered = self.filter_shapes(ShapeState.ALTERED, _.Face)
+        self.faces_untouched = self.filter_shapes(ShapeState.UNTOUCHED, _.Face)
+        self.faces_removed = self.filter_shapes(ShapeState.REMOVED, _.Face)
 
-        self.vertices = {v.label: v for v in ShapeList(obj.vertices())}
+        self.edges = ShapeList(obj.edges())
+        self.edges_state = self.get_shapes_state(_.Edge)
+        self.edges_added = self.filter_shapes(ShapeState.ADDED, _.Edge)
+        self.edges_altered = self.filter_shapes(ShapeState.ALTERED, _.Edge)
+        self.edges_untouched = self.filter_shapes(ShapeState.UNTOUCHED, _.Edge)
+        self.edges_removed = self.filter_shapes(ShapeState.REMOVED, _.Edge)
+
+        self.vertices = ShapeList(obj.vertices())
+
+    def get_shapes(self, shape_type: type[ShapeLike]) -> ShapeList:
+        """Return the mutation shapes belonging the given shape type."""
+        if shape_type == _.Face:
+            return self.faces
+        if shape_type == _.Edge:
+            return self.edges
+        if shape_type == _.Vertex:
+            return self.vertices
+        raise TypeError
 
     def __repr__(self):
         return self.id
 
-    def filter_faces(self, state: ShapeState) -> FaceDict:
-        """Return the faces of the current object that match the given state."""
+    def filter_shapes(self, state: ShapeState, shape_type: type[ShapeLike]) -> ShapeList:
+        """Return the shapes of the current object that match the given state."""
 
-        faces = (
-            self.previous.faces
-            if self.previous and state == ShapeState.REMOVED
-            else self.faces
+        assert shape_type in [_.Face, _.Edge]
+
+        mutation = (
+            self.previous if self.previous and state == ShapeState.REMOVED
+            else self
         )
-        faces = {h: faces[h] for h, s in self.faces_state.items() if s == state}
-        return FaceDict(faces)
+        shapes = mutation.get_shapes(shape_type)
+        shapes_state = self.faces_state if shape_type == _.Face else self.edges_state
 
-    def filter_edges(self, state: ShapeState) -> EdgeDict:
-        """Return the edges of the current object that match the given state."""
+        faces = [shapes.get(h) for h, s in shapes_state.items() if s == state]
+        return ShapeList(faces)
 
-        edges = (
-            self.previous.edges
-            if self.previous and state == ShapeState.REMOVED
-            else self.edges
-        )
-        edges = {h: edges[h] for h, e in self.edges_state.items() if e == state}
-        return EdgeDict(edges)
+    def get_shapes_state(self, shape_type: type[ShapeLike]) -> dict[Hash, ShapeState]:
+        """Return a dictionnary holding the state of each face of the object."""
+
+        def get_state(shape: ShapeLike) -> ShapeState:
+            if not self.previous:
+                return ShapeState.ADDED
+
+            if self.previous.get_shapes(shape_type).contain(shape.label):
+                return ShapeState.UNTOUCHED
+
+            if isinstance(shape, _.Face) and self.is_altered_face(shape):
+                return ShapeState.ALTERED
+
+            if isinstance(shape, _.Edge) and self.is_altered_edge(shape):
+                return ShapeState.ALTERED
+
+            return ShapeState.ADDED
+
+        shapes = self.get_shapes(shape_type)
+        shapes_state = {shape.label: get_state(shape) for shape in shapes}
+
+        if self.previous:
+            for previous_shape in self.previous.get_shapes(shape_type):
+                if not shapes.contain(previous_shape.label):
+                    shapes_state[previous_shape.label] = ShapeState.REMOVED
+
+        return shapes_state
 
     @classmethod
     def is_altered_faces(cls, this_face: _.Face, that_face: _.Face):
@@ -75,7 +107,6 @@ class Mutation:
             for that_edge in that_face.edges():
                 if this_hash == hash_shape(that_edge):
                     return True
-
 
         if (
             this_face.geom_type == that_face.geom_type
@@ -94,10 +125,10 @@ class Mutation:
             return True
 
         for edge in face.edges():
-            if hash_shape(edge) in self.previous.edges:
+            if self.previous.edges.contain(hash_shape(edge)):
                 return True
 
-        for that_face in self.previous.faces():
+        for that_face in self.previous.faces:
             if (face.geom_type == that_face.geom_type
                 and face.location == that_face.location
                 and face.center_location == that_face.center_location
@@ -105,30 +136,6 @@ class Mutation:
                 return True
 
         return False
-
-    def get_faces_state(self) -> dict[Hash, ShapeState]:
-        """Return a dictionnary holding the state of each face of the object."""
-
-        def get_state(face_hash: Hash, face: _.Face) -> ShapeState:
-            if not self.previous:
-                return ShapeState.ADDED
-
-            if face_hash in self.previous.faces:
-                return ShapeState.UNTOUCHED
-
-            if self.is_altered_face(face):
-                return ShapeState.ALTERED
-
-            return ShapeState.ADDED
-
-        faces = {fh: get_state(fh, face) for fh, face in self.faces.items()}
-
-        if self.previous:
-            for face_hash in self.previous.faces:
-                if face_hash not in self.faces:
-                    faces[face_hash] = ShapeState.REMOVED
-
-        return faces
 
     def is_altered_edge(self, edge: _.Edge):
         """Check if the given edge were altered, by comparing the vertices of
@@ -138,31 +145,7 @@ class Mutation:
             return True
 
         for vertex in edge.vertices():
-            if hash_shape(vertex) in self.previous.vertices:
+            if self.previous.vertices.contain(hash_shape(vertex)):
                 return True
 
         return False
-
-    def get_edges_state(self) -> dict[Hash, ShapeState]:
-        """Return a dictionnary holding the state of each edge of the object."""
-
-        def get_state(edge_hash: Hash, edge: _.Edge) -> ShapeState:
-            if not self.previous:
-                return ShapeState.ADDED
-
-            if edge_hash in self.previous.edges:
-                return ShapeState.UNTOUCHED
-
-            if self.is_altered_edge(edge):
-                return ShapeState.ALTERED
-
-            return ShapeState.ADDED
-
-        edges = {eh: get_state(eh, edge) for eh, edge in self.edges.items()}
-
-        if self.previous:
-            for edge_hash in self.previous.edges:
-                if edge_hash not in self.edges:
-                    edges[edge_hash] = ShapeState.REMOVED
-
-        return edges

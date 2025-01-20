@@ -1,6 +1,6 @@
-"""A module used to store shapes-related stuff"""
+"""A module used to store shapes-related stuff."""
 from enum import Enum
-from typing import TypeAlias, Iterable, TextIO
+from typing import TypeAlias, Iterable, TextIO, TypeVar
 from hashlib import md5
 from sys import stdout
 
@@ -58,47 +58,59 @@ def hash_shape(shape: _.Shape) -> Hash:
     return md5(str(serialized).encode()).hexdigest()
 
 
-def add_shape_hash(shape: _.Shape) -> _.Shape:
+ShapeLike: TypeAlias = _.Face | _.Edge | _.Vertex
+ShapeT = TypeVar("ShapeT", bound=_.Face | _.Edge | _.Vertex)
+
+
+def add_shape_hash(shape: ShapeT) -> ShapeT:
     """Add the hash of the given shape to the shape label."""
     if not shape.label:
         shape.label = hash_shape(shape)
     return shape
 
 
-def add_face_hash(face: _.Face) -> _.Face:
-    """Add the hash of the given face to the face label."""
-    return add_shape_hash(face) # type: ignore
-
-
-def add_edge_hash(edge: _.Edge) -> _.Edge:
-    """Add the hash of the given edge to the edge label."""
-    return add_shape_hash(edge) # type: ignore
-
-
-class ShapeList(_.ShapeList):
+class ShapeList(_.ShapeList[ShapeT]):
     """A custom ShapeList that automatically adds a hash to the shape label,
-    and with some extra methods."""
+    and with some extra utility methods."""
 
-    def __init__(self, iterable):
-        super().__init__(add_shape_hash(shape) for shape in iterable)
+    def __init__(self, shapes: Iterable[ShapeT]):
+        super().__init__(add_shape_hash(shape) for shape in shapes)
 
-    def __setitem__(self, index, item):
-        super().__setitem__(index, add_shape_hash(item))
+    def __setitem__(self, index: int, shape: ShapeT):
+        super().__setitem__(index, add_shape_hash(shape))
 
-    def insert(self, index, item):
-        super().insert(index, add_shape_hash(item))
+    def insert(self, index: int, shape: ShapeT):
+        super().insert(index, add_shape_hash(shape))
 
-    def append(self, item):
-        super().append(add_shape_hash(item))
+    def append(self, shape: ShapeT):
+        super().append(add_shape_hash(shape))
 
-    def extend(self, other):
-        if isinstance(other, type(self)):
-            super().extend(other)
-        else:
-            super().extend(add_shape_hash(item) for item in other)
+    def extend(self, other: Iterable[ShapeT]):
+        super().extend(
+            other if isinstance(other, ShapeList)
+            else [add_shape_hash(shape) for shape in other]
+        )
+
+    def get(self, shape_hash: Hash) -> ShapeT:
+        """Return the shape that belongs to the given hash."""
+        for shape in self:
+            if shape.label == shape_hash:
+                return shape
+        raise KeyError(shape_hash)
+
+    def contain(self, edge_hash: Hash) -> bool:
+        """Return True if the given hash is found in the shape list."""
+        for edge in self:
+            if edge.label == edge_hash:
+                return True
+        return False
+
+    def hashes(self) -> list[Hash]:
+        """Return a list of hashes corresponding to the all shapes hash."""
+        return [shape.label for shape in self]
 
     def info(self, file: TextIO|None=None):
-        """Prints an info table of all the shapes to the given file or stream
+        """Prints an info table of all the faces to the given file or stream
         (default to stdout)"""
 
         def str_vector(vector: _.Vector) -> str:
@@ -133,41 +145,3 @@ class ShapeList(_.ShapeList):
             config.INFO_TABLE_FORMAT
         )
         print(str_table, file=file or stdout)
-
-
-class EdgeDict(dict):
-    """A custom dictionnary used to store edges by their hash.
-    If the dict is called ie. `my_edges()`, a list is returned."""
-
-    def __init__(self, edges_dict: dict[Hash, _.Edge]):
-        super().__init__(edges_dict)
-
-    def __setitem__(self, edge_hash: Hash, edge: _.Edge) -> None:
-        super().__setitem__(edge_hash, edge)
-
-    def __getitem__(self, edge_hash: Hash) -> _.Edge:
-        return super().__getitem__(edge_hash)
-
-    def __call__(self) -> ShapeList:
-        return ShapeList(self.values())
-
-
-class FaceDict(dict):
-    """A custom dictionnary used to store faces by their hash.
-    If the dict is called ie. `my_edges()`, a list is returned."""
-
-    def __init__(self, faces_dict: dict[Hash, _.Face]):
-        super().__init__(faces_dict)
-
-    def __setitem__(self, face_hash: Hash, face: _.Face) -> None:
-        super().__setitem__(face_hash, face)
-
-    def __getitem__(self, face_hash: Hash) -> _.Face:
-        return super().__getitem__(face_hash)
-
-    def __call__(self) -> ShapeList:
-        return ShapeList(self.values())
-
-
-FaceListLike: TypeAlias = FaceDict | Iterable[_.Face] | _.Face
-EdgeListLike: TypeAlias = EdgeDict | Iterable[_.Edge] | _.Edge

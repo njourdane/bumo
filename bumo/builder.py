@@ -2,14 +2,15 @@
 from __future__ import annotations
 from os import PathLike
 from sys import stdout
+from typing import Iterable
 
 import build123d as _
 from tabulate import tabulate
 
 from .mutation import Mutation
-from .mode import Mode, ModeType, AUTO
-from .colors import ColorLike, cast_color, color_to_str, get_rvb
-from .shapes import Hash, FaceListLike, EdgeListLike, FaceDict, EdgeDict, add_face_hash, add_edge_hash, ShapeList
+from .mode import Mode, ModeType, AUTO, DEBUG
+from .colors import color_to_str, get_rvb
+from .shapes import Hash, ShapeList, add_shape_hash
 from . import config
 
 
@@ -22,15 +23,17 @@ class Builder:
         self.object = _.Part(None)
         self.mutations: list[Mutation] = []
         self.faces_modes: dict[Hash, Mode] = {}
-        self.faces = FaceDict({})
+        self.faces_dict: dict[Hash, _.Face] = {}
 
     def __getitem__(self, mut_idx: int):
         return self.mutations[mut_idx]
 
     def get_faces_colors(self) -> dict[Hash, _.Color]:
+        """Build a dict containing for each face hash, its actual color."""
+
         palette = config.COLOR_PALETTE.build_palette(len(self.mutations))
         faces_mutations = self.get_faces_mutations()
-        faces_last: list[Hash] = list(self.mutations[-1].faces.keys())
+        faces_last = self.mutations[-1].faces.hashes()
 
         def get_color(face_hash):
             mode = self.faces_modes[face_hash]
@@ -63,7 +66,7 @@ class Builder:
         faces_to_show: list[_.Face] = []
 
         for face_hash, face_color in faces_colors.items():
-            face = self.faces[face_hash]
+            face = self.faces_dict[face_hash]
             face.color = face_color
             face.label = face_hash[:6]
             faces_to_show.append(face)
@@ -87,35 +90,6 @@ class Builder:
         self.intersect(part)
         return self
 
-    # def get_face(self, face_hash: Hash, from_end=True) -> _.Face:
-    #     """Return a face based on its hash by iterating over all the mutations,
-    #     allowing to find removed faces, either from begining or from the end."""
-    #     mutations = reversed(self.mutations) if from_end else self.mutations
-
-    #     for mutation in mutations:
-    #         if face_hash in mutation.faces:
-    #             return mutation.faces[face_hash]
-
-    #     raise KeyError
-
-    def get_face_mutation(self, face: _.Face | Hash) -> Mutation:
-        """Retrieve the mutation who created the given face."""
-
-        _hash = add_face_hash(face).label if isinstance(face, _.Face) else face
-        for mutation in self.mutations:
-            if _hash in mutation.faces:
-                return mutation
-        raise ValueError
-
-    def get_edge_mutation(self, edge: _.Edge | Hash) -> Mutation:
-        """Retrieve the mutation who created the given edge."""
-
-        _hash = add_edge_hash(edge).label if isinstance(edge, _.Edge) else edge
-        for mutation in self.mutations:
-            if _hash in mutation.edges:
-                return mutation
-        raise ValueError
-
     def get_faces_mutations(self) -> dict[Hash, int]:
         """Return a dictionnary containing for each face hash, the mutation that
         created the face."""
@@ -125,25 +99,26 @@ class Builder:
 
         for mutation in self.mutations:
 
-            for face_hash in mutation.faces_added:
-                faces_mutations[face_hash] = (
-                    faces_mutations[mutation.faces_alias[face_hash]]
+            for face_ad in mutation.faces_added:
+                faces_mutations[face_ad.label] = (
+                    faces_mutations[mutation.faces_alias[face_ad.label]]
                     if mutation.faces_alias
                     else mutation.index
                 )
 
-            rm_muts = {faces_mutations[rm_h] for rm_h in mutation.faces_removed}
+            rm_muts = {faces_mutations[face_rm.label] for face_rm in mutation.faces_removed}
 
             if len(rm_muts) == 1:
                 rm_color = rm_muts.pop()
 
-                for face_hash in mutation.faces_altered:
-                    faces_mutations[face_hash] = rm_color
+                for face_al in mutation.faces_altered:
+                    faces_mutations[face_al.label] = rm_color
             else:
-                for al_hash, al_face in mutation.faces_altered.items():
-                    for rm_hash, rm_face in mutation.faces_removed.items():
-                        if Mutation.is_altered_faces(al_face, rm_face):
-                            faces_mutations[al_hash] = faces_mutations[rm_hash]
+                for face_al in mutation.faces_altered:
+                    for face_rm in mutation.faces_removed:
+                        if Mutation.is_altered_faces(face_al, face_rm):
+                            rm_mut_idx = faces_mutations[face_rm.label]
+                            faces_mutations[face_al.label] = rm_mut_idx
 
         return faces_mutations
 
@@ -156,51 +131,33 @@ class Builder:
         raise KeyError
 
     @classmethod
-    def _cast_faces(cls, faces: FaceListLike) -> FaceDict:
+    def _cast_faces(cls, faces: Iterable[_.Face] | _.Face) -> ShapeList[_.Face]:
         """Cast the given faces to a FaceDict."""
 
-        if isinstance(faces, FaceDict):
+        if isinstance(faces, ShapeList):
             return faces
 
         if isinstance(faces, _.Face):
-            face = add_face_hash(faces)
-            return FaceDict({face.label: face})
+            return ShapeList([faces])
 
-        faces_dict = FaceDict({})
-        for face in faces:
-            face = add_face_hash(face)
-            faces_dict[face.label] = face
-        return faces_dict
+        return ShapeList(faces)
 
     @classmethod
-    def _cast_edges(cls, edges: EdgeListLike) -> EdgeDict:
+    def _cast_edges(cls, edges: Iterable[_.Edge] | _.Edge) -> ShapeList[_.Edge]:
         """Cast the given edges an EdgeDict."""
 
-        if isinstance(edges, EdgeDict):
+        if isinstance(edges, ShapeList):
             return edges
 
         if isinstance(edges, _.Edge):
-            edge = add_edge_hash(edges)
-            return EdgeDict({edge.label: edge})
+            return ShapeList([edges])
 
-        edges_dict = EdgeDict({})
-        for edge in edges:
-            edge = add_edge_hash(edge)
-            edges_dict[edge.label] = edge
-        return edges_dict
+        return ShapeList(edges)
 
     @classmethod
     def _cast_part(cls, part: Builder | _.Part) -> _.Part:
         """Cast an EdgeListLike to a Edge iterable."""
         return part if isinstance(part, _.Part) else part.object
-
-    # @classmethod
-    # def _part_color(cls, part: Builder | _.Part) -> _.Color|None:
-    #     """Retrieve the color of the given object."""
-
-    #     if isinstance(part, Builder) and len(part.mutations) == 1:
-    #         return part.mutations[-1].color
-    #     return None
 
     def mutate(
             self,
@@ -213,10 +170,8 @@ class Builder:
         a mutation with the given name, color and debug mode."""
 
         self.object = obj
-        # _color = cast_color(color)
 
-        # TODO: remove faces_alias from mutation?
-        # Pass them to builder faces dict instead?
+        # TODO: remove faces_alias from mutation and pass them to builder faces?
         mutation = Mutation(
             obj,
             self.mutations[-1] if self.mutations else None,
@@ -225,17 +180,11 @@ class Builder:
             faces_alias,
         )
 
-        for face_hash, face in mutation.faces.items():
-            if face_hash not in self.faces:
-                self.faces[face_hash] = face
+        for face in mutation.faces:
+            if face.label not in self.faces_dict:
+                self.faces_dict[face.label] = face
 
-            self.faces_modes[face_hash] = mode
-
-        # if debug:
-        #     for face_hash in mutation.faces_added:
-        #         self.debug_faces[face_hash] = (
-        #             _color if color else config.DEFAULT_DEBUG_COLOR
-        #         )
+            self.faces_modes[face.label] = mode
 
         self.mutations.append(mutation)
         return mutation
@@ -253,7 +202,7 @@ class Builder:
         faces_alias: dict[Hash, Hash] = {}
 
         for face in ShapeList(self.object.faces()):
-            face_moved = add_face_hash(location * face)
+            face_moved = add_shape_hash(location * face)
             faces_alias[face_moved.label] = face.label
 
         return self.mutate('move', obj, mode, faces_alias)
@@ -293,20 +242,19 @@ class Builder:
 
     def fillet(
             self,
-            edges: EdgeListLike,
+            edges: Iterable[_.Edge] | _.Edge,
             radius: float,
             mode: Mode = AUTO,
         ) -> Mutation:
         """Mutation: apply a fillet of the given radius to the given edges of
         the current object, with the given color and debug mode."""
 
-        edges = self._cast_edges(edges)()
-        obj = self.object.fillet(radius, edges)
+        obj = self.object.fillet(radius, self._cast_edges(edges))
         return self.mutate('fillet', obj, mode)
 
     def chamfer(
             self,
-            edges: EdgeListLike,
+            edges: Iterable[_.Edge] | _.Edge,
             length: float,
             length2: float | None=None,
             face: _.Face | None=None,
@@ -315,7 +263,7 @@ class Builder:
         """Mutation: apply a chamfer of the given length to the given edges of
         the current object, with the given color and debug mode."""
 
-        edges = self._cast_edges(edges)()
+        edges = self._cast_edges(edges)
         obj = self.object.chamfer(length, length2, edges, face) # type: ignore
         return self.mutate('chamfer', obj, mode)
 
@@ -358,13 +306,12 @@ class Builder:
         )
         print(str_table, file=file or stdout)
 
-    def debug(self, faces: FaceListLike, color: ColorLike | None=None):
+    def debug(self, faces: ShapeList, mode: Mode=DEBUG):
         """Set a face for debugging, so it will appear in the given color while
         the rest of the object will be translucent."""
 
-        _color = cast_color(color) if color else config.DEFAULT_DEBUG_COLOR
-        for face_hash in self._cast_faces(faces).keys():
-            self.faces_modes[face_hash] = Mode(ModeType.DEBUG, _color)
+        for face in self._cast_faces(faces):
+            self.faces_modes[face.label] = mode
 
     def export(
             self,

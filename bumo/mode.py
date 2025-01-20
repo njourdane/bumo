@@ -28,3 +28,4 @@ class Mode:
 
 
 AUTO = Mode(ModeType.AUTO, config.DEFAULT_COLOR)
+DEBUG = Mode(ModeType.DEBUG, config.DEFAULT_DEBUG_COLOR)
