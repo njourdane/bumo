@@ -7,8 +7,9 @@ import build123d as _
 from tabulate import tabulate
 
 from .mutation import Mutation
-from .colors import ColorLike, cast_color, color_to_str
-from .shapes import Hash, FaceListLike, EdgeListLike, FaceDict, EdgeDict, add_hash, ShapeList
+from .mode import Mode, ModeType, AUTO
+from .colors import ColorLike, cast_color, color_to_str, get_rvb
+from .shapes import Hash, FaceListLike, EdgeListLike, FaceDict, EdgeDict, add_face_hash, add_edge_hash, ShapeList
 from . import config
 
 
@@ -20,41 +21,55 @@ class Builder:
 
         self.object = _.Part(None)
         self.mutations: list[Mutation] = []
-        self.debug_faces: dict[Hash, _.Color] = {}
+        self.faces_modes: dict[Hash, Mode] = {}
+        self.faces = FaceDict({})
 
     def __getitem__(self, mut_idx: int):
         return self.mutations[mut_idx]
 
+    def get_faces_colors(self) -> dict[Hash, _.Color]:
+        palette = config.COLOR_PALETTE.build_palette(len(self.mutations))
+        faces_mutations = self.get_faces_mutations()
+        faces_last: list[Hash] = list(self.mutations[-1].faces.keys())
+
+        def get_color(face_hash):
+            mode = self.faces_modes[face_hash]
+            mut_idx = faces_mutations[face_hash]
+            return mode.get_color(palette[mut_idx])
+
+        faces_debug = {
+            face_hash: mode.color
+            for face_hash, mode in self.faces_modes.items()
+            if mode.mode_type == ModeType.DEBUG
+        }
+
+        if faces_debug:
+            ghost_colors = {
+                fg_h: _.Color(*get_rvb(get_color(fg_h)), config.DEBUG_ALPHA)
+                for fg_h in faces_last
+            }
+            return {
+                **ghost_colors,
+                **faces_debug,
+            }
+
+        return {fl_h: get_color(fl_h) for fl_h in faces_last}
+
     def __call__(self) -> list[_.Face]:
         if not self.mutations:
             raise ValueError("No mutation to show.")
-        faces = self.mutations[-1].faces
-        faces_mutations = self.get_faces_mutations()
 
-        for debug_hash in self.debug_faces:
-            if debug_hash not in faces:
-                faces[debug_hash] = self.get_face(debug_hash)
+        faces_colors = self.get_faces_colors()
+        faces_to_show: list[_.Face] = []
 
-        palette = config.COLOR_PALETTE.build_palette(len(self.mutations))
-        for face_hash, face in faces.items():
-            mut = self.mutations[faces_mutations[face_hash]]
-            color = (
-                palette[mut.index] if palette and not mut.color
-                else mut.color
-            )
-            face.color = color or config.DEFAULT_COLOR
+        for face_hash, face_color in faces_colors.items():
+            face = self.faces[face_hash]
+            face.color = face_color
             face.label = face_hash[:6]
+            faces_to_show.append(face)
 
-        if self.debug_faces:
-            for face_hash, mut_idx in faces_mutations.items():
-                if face_hash in self.debug_faces:
-                    color = self.debug_faces[face_hash]
-                else:
-                    color = self.mutations[mut_idx].color or config.DEFAULT_COLOR
-                    r, v, b = color.to_tuple()[:3]
-                    color = _.Color(r, v, b, config.DEBUG_ALPHA)
+        return faces_to_show
 
-        return list(faces.values())
 
     def __iadd__(self, part: Builder | _.Part):
         self.add(part)
@@ -72,21 +87,21 @@ class Builder:
         self.intersect(part)
         return self
 
-    def get_face(self, face_hash: Hash, from_end=True) -> _.Face:
-        """Return a face based on its hash by iterating over all the mutations,
-        allowing to find removed faces, either from begining or from the end."""
-        mutations = reversed(self.mutations) if from_end else self.mutations
+    # def get_face(self, face_hash: Hash, from_end=True) -> _.Face:
+    #     """Return a face based on its hash by iterating over all the mutations,
+    #     allowing to find removed faces, either from begining or from the end."""
+    #     mutations = reversed(self.mutations) if from_end else self.mutations
 
-        for mutation in mutations:
-            if face_hash in mutation.faces:
-                return mutation.faces[face_hash]
+    #     for mutation in mutations:
+    #         if face_hash in mutation.faces:
+    #             return mutation.faces[face_hash]
 
-        raise KeyError
+    #     raise KeyError
 
     def get_face_mutation(self, face: _.Face | Hash) -> Mutation:
         """Retrieve the mutation who created the given face."""
 
-        _hash = add_hash(face).label if isinstance(face, _.Face) else face
+        _hash = add_face_hash(face).label if isinstance(face, _.Face) else face
         for mutation in self.mutations:
             if _hash in mutation.faces:
                 return mutation
@@ -95,16 +110,17 @@ class Builder:
     def get_edge_mutation(self, edge: _.Edge | Hash) -> Mutation:
         """Retrieve the mutation who created the given edge."""
 
-        _hash = add_hash(edge).label if isinstance(edge, _.Edge) else edge
+        _hash = add_edge_hash(edge).label if isinstance(edge, _.Edge) else edge
         for mutation in self.mutations:
             if _hash in mutation.edges:
                 return mutation
         raise ValueError
 
     def get_faces_mutations(self) -> dict[Hash, int]:
-        """Return a dictionnary containing the color of each face of the current
-        object."""
+        """Return a dictionnary containing for each face hash, the mutation that
+        created the face."""
 
+        # TODO: store dict in builder and apply on each mutation?
         faces_mutations: dict[Hash, int] = {}
 
         for mutation in self.mutations:
@@ -147,12 +163,12 @@ class Builder:
             return faces
 
         if isinstance(faces, _.Face):
-            face = add_hash(faces)
+            face = add_face_hash(faces)
             return FaceDict({face.label: face})
 
         faces_dict = FaceDict({})
         for face in faces:
-            face = add_hash(face)
+            face = add_face_hash(face)
             faces_dict[face.label] = face
         return faces_dict
 
@@ -164,12 +180,12 @@ class Builder:
             return edges
 
         if isinstance(edges, _.Edge):
-            edge = add_hash(edges)
+            edge = add_edge_hash(edges)
             return EdgeDict({edge.label: edge})
 
         edges_dict = EdgeDict({})
         for edge in edges:
-            edge = add_hash(edge)
+            edge = add_edge_hash(edge)
             edges_dict[edge.label] = edge
         return edges_dict
 
@@ -178,42 +194,48 @@ class Builder:
         """Cast an EdgeListLike to a Edge iterable."""
         return part if isinstance(part, _.Part) else part.object
 
-    @classmethod
-    def _part_color(cls, part: Builder | _.Part) -> _.Color|None:
-        """Retrieve the color of the given object."""
+    # @classmethod
+    # def _part_color(cls, part: Builder | _.Part) -> _.Color|None:
+    #     """Retrieve the color of the given object."""
 
-        if isinstance(part, Builder) and len(part.mutations) == 1:
-            return part.mutations[-1].color
-        return None
+    #     if isinstance(part, Builder) and len(part.mutations) == 1:
+    #         return part.mutations[-1].color
+    #     return None
 
     def mutate(
             self,
             name: str,
             obj: _.Part,
-            color: ColorLike | None,
-            debug: bool,
+            mode: Mode,
             faces_alias: dict[Hash, Hash] | None=None
         ) -> Mutation:
         """Base mutation: mutate the current object to the given one by applying
         a mutation with the given name, color and debug mode."""
 
         self.object = obj
-        _color = cast_color(color)
+        # _color = cast_color(color)
 
+        # TODO: remove faces_alias from mutation?
+        # Pass them to builder faces dict instead?
         mutation = Mutation(
             obj,
             self.mutations[-1] if self.mutations else None,
             name,
             len(self.mutations),
-            _color if color else None,
-            faces_alias
+            faces_alias,
         )
 
-        if debug:
-            for face_hash in mutation.faces_added:
-                self.debug_faces[face_hash] = (
-                    _color if color else config.DEFAULT_DEBUG_COLOR
-                )
+        for face_hash, face in mutation.faces.items():
+            if face_hash not in self.faces:
+                self.faces[face_hash] = face
+
+            self.faces_modes[face_hash] = mode
+
+        # if debug:
+        #     for face_hash in mutation.faces_added:
+        #         self.debug_faces[face_hash] = (
+        #             _color if color else config.DEFAULT_DEBUG_COLOR
+        #         )
 
         self.mutations.append(mutation)
         return mutation
@@ -221,8 +243,7 @@ class Builder:
     def move(
             self,
             location: _.Location,
-            color: ColorLike | None=None,
-            debug=False
+            mode: Mode = AUTO,
         ) -> Mutation:
         """Mutation: move the object to the given location, keeping the colors.
         with the given color and debug mode.
@@ -232,60 +253,56 @@ class Builder:
         faces_alias: dict[Hash, Hash] = {}
 
         for face in ShapeList(self.object.faces()):
-            face_moved = add_hash(location * face)
+            face_moved = add_face_hash(location * face)
             faces_alias[face_moved.label] = face.label
 
-        return self.mutate('move', obj, color, debug, faces_alias)
+        return self.mutate('move', obj, mode, faces_alias)
 
     def add(
             self,
             part: Builder | _.Part,
-            color: ColorLike | None=None,
-            debug=False
+            mode: Mode = AUTO,
         ) -> Mutation:
         """Mutation: fuse the given part to the current object.
         with the given color and debug mode."""
 
         obj = self.object + self._cast_part(part)
-        return self.mutate('add', obj, color or self._part_color(part), debug)
+        return self.mutate('add', obj, mode)
 
     def sub(
             self,
             part: Builder | _.Part,
-            color: ColorLike | None=None,
-            debug=False
+            mode: Mode = AUTO,
         ) -> Mutation:
         """Mutation: substract the given part from the current object,
         with the given color and debug mode."""
 
         obj = self.object - self._cast_part(part)
-        return self.mutate('sub', obj, color or self._part_color(part), debug)
+        return self.mutate('sub', obj, mode)
 
     def intersect(
             self,
             part: Builder | _.Part,
-            color: ColorLike | None=None,
-            debug=False
+            mode: Mode = AUTO,
         ) -> Mutation:
         """Mutation: intersects the given part to the current object,
         with the given color and debug mode."""
 
         obj = self.object & self._cast_part(part)
-        return self.mutate('inter', obj, color or self._part_color(part), debug)
+        return self.mutate('inter', obj, mode)
 
     def fillet(
             self,
             edges: EdgeListLike,
             radius: float,
-            color: ColorLike | None=None,
-            debug=False
+            mode: Mode = AUTO,
         ) -> Mutation:
         """Mutation: apply a fillet of the given radius to the given edges of
         the current object, with the given color and debug mode."""
 
         edges = self._cast_edges(edges)()
         obj = self.object.fillet(radius, edges)
-        return self.mutate('fillet', obj, color, debug)
+        return self.mutate('fillet', obj, mode)
 
     def chamfer(
             self,
@@ -293,15 +310,14 @@ class Builder:
             length: float,
             length2: float | None=None,
             face: _.Face | None=None,
-            color: ColorLike | None=None,
-            debug=False
+            mode: Mode = AUTO,
         ) -> Mutation:
         """Mutation: apply a chamfer of the given length to the given edges of
         the current object, with the given color and debug mode."""
 
         edges = self._cast_edges(edges)()
         obj = self.object.chamfer(length, length2, edges, face) # type: ignore
-        return self.mutate('chamfer', obj, color, debug)
+        return self.mutate('chamfer', obj, mode)
 
     def info(self, file=None):
         """Print the list of mutations to the given file (stdout by default)."""
@@ -309,10 +325,7 @@ class Builder:
         palette = config.COLOR_PALETTE.build_palette(len(self.mutations))
 
         def row(mut: Mutation) -> tuple:
-            color = (
-                palette[mut.index] if palette and not mut.color
-                else (mut.color or config.DEFAULT_COLOR)
-            )
+            color = palette[mut.index] # FIXME
             r, g, b = [int(c * 255) for c in color.to_tuple()[:3]]
 
             start = f"\033[38;2;{ r };{ g };{ b }m"
@@ -350,8 +363,8 @@ class Builder:
         the rest of the object will be translucent."""
 
         _color = cast_color(color) if color else config.DEFAULT_DEBUG_COLOR
-        for face_hash in self._cast_faces(faces):
-            self.debug_faces[face_hash] = _color
+        for face_hash in self._cast_faces(faces).keys():
+            self.faces_modes[face_hash] = Mode(ModeType.DEBUG, _color)
 
     def export(
             self,

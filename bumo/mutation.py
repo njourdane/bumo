@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import build123d as _
 
-from .colors import cast_color
 from .shapes import Hash, ShapeState, FaceDict, EdgeDict, hash_shape, ShapeList
 
 
@@ -16,13 +15,11 @@ class Mutation:
         previous: Mutation | None,
         name: str,
         index: int,
-        color: _.Color | None,
         faces_alias: dict[Hash, Hash] | None
     ) -> None:
         self.previous = previous
         self.name = name
         self.index = index
-        self.color = cast_color(color) if color else None
         self.faces_alias = faces_alias or {}
 
         self.id = f"{ name }-{ index }"

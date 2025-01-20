@@ -58,11 +58,21 @@ def hash_shape(shape: _.Shape) -> Hash:
     return md5(str(serialized).encode()).hexdigest()
 
 
-def add_hash(shape: _.Shape) -> _.Shape:
+def add_shape_hash(shape: _.Shape) -> _.Shape:
     """Add the hash of the given shape to the shape label."""
     if not shape.label:
         shape.label = hash_shape(shape)
     return shape
+
+
+def add_face_hash(face: _.Face) -> _.Face:
+    """Add the hash of the given face to the face label."""
+    return add_shape_hash(face) # type: ignore
+
+
+def add_edge_hash(edge: _.Edge) -> _.Edge:
+    """Add the hash of the given edge to the edge label."""
+    return add_shape_hash(edge) # type: ignore
 
 
 class ShapeList(_.ShapeList):
@@ -70,22 +80,22 @@ class ShapeList(_.ShapeList):
     and with some extra methods."""
 
     def __init__(self, iterable):
-        super().__init__(add_hash(shape) for shape in iterable)
+        super().__init__(add_shape_hash(shape) for shape in iterable)
 
     def __setitem__(self, index, item):
-        super().__setitem__(index, add_hash(item))
+        super().__setitem__(index, add_shape_hash(item))
 
     def insert(self, index, item):
-        super().insert(index, add_hash(item))
+        super().insert(index, add_shape_hash(item))
 
     def append(self, item):
-        super().append(add_hash(item))
+        super().append(add_shape_hash(item))
 
     def extend(self, other):
         if isinstance(other, type(self)):
             super().extend(other)
         else:
-            super().extend(add_hash(item) for item in other)
+            super().extend(add_shape_hash(item) for item in other)
 
     def info(self, file: TextIO|None=None):
         """Prints an info table of all the shapes to the given file or stream

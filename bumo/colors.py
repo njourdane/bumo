@@ -36,10 +36,12 @@ def color_to_str(color: _.Color, as_hex=False) -> str:
     return str(color).split("~")[1].strip().lower()
 
 
+def get_rvb(color: _.Color) -> tuple[int, int, int]:
+    return color.to_tuple()[:3]
+
 
 class ColorPalette(Enum):
     "The name of predefined color palettes."
-    NONE = -1
     VIRIDIS = 0
     INFERNO = 1
     MAGMA = 2
@@ -48,9 +50,6 @@ class ColorPalette(Enum):
     def build_palette(self, amount: int) -> list[_.Color]:
         """Build a list of colors based on the given palette and the amount of
         colors."""
-
-        if self == ColorPalette.NONE:
-            return []
 
         palette = [viridis, inferno, magma, plasma][self.value]
 
