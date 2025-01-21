@@ -74,20 +74,32 @@ class Builder:
         return faces_to_show
 
 
-    def __iadd__(self, part: Builder | _.Part):
-        self.add(part)
+    def __iadd__(self, part: Builder | _.Part | tuple[Builder | _.Part, Mode]):
+        if isinstance(part, tuple):
+            self.add(*part)
+        else:
+            self.add(part)
         return self
 
-    def __isub__(self, part: Builder | _.Part):
-        self.sub(part)
+    def __isub__(self, part: Builder | _.Part | tuple[Builder | _.Part, Mode]):
+        if isinstance(part, tuple):
+            self.sub(*part)
+        else:
+            self.sub(part)
         return self
 
-    def __imul__(self, location: _.Location):
-        self.move(location)
+    def __imul__(self, location: _.Location | tuple[_.Location, Mode]):
+        if isinstance(location, tuple):
+            self.move(*location)
+        else:
+            self.move(location)
         return self
 
-    def __iand__(self, part: Builder | _.Part):
-        self.intersect(part)
+    def __iand__(self, part: Builder | _.Part | tuple[Builder | _.Part, Mode]):
+        if isinstance(part, tuple):
+            self.intersect(*part)
+        else:
+            self.intersect(part)
         return self
 
     def get_faces_mutations(self) -> dict[Hash, int]:

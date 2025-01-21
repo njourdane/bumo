@@ -1,12 +1,12 @@
 import build123d as _
 from ocp_vscode import show_object
-from bumo import Builder, config
+from bumo import Builder, config # , DEBUG
 
 config.DEFAULT_COLOR = _.Color("orange")
 
 b = Builder()
-b.add(_.Box(12, 12, 2))
-b.add(_.Box(8, 8, 4))
+b += _.Box(12, 12, 2)
+b += _.Box(8, 8, 4)
 b.fillet(b[-1].edges_added, 0.4)
 hole = b.sub(_.Cylinder(3, 4))
 b.chamfer(hole.edges_added.first, 0.3)
