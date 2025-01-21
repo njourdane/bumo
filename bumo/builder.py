@@ -33,7 +33,7 @@ class Builder:
 
         palette = config.COLOR_PALETTE.build_palette(len(self.mutations))
         faces_mutations = self.get_faces_mutations()
-        faces_last = self.mutations[-1].faces.hashes()
+        faces_last = self.last.faces.hashes()
 
         def get_color(face_hash):
             mode = self.faces_modes[face_hash]
@@ -73,7 +73,6 @@ class Builder:
 
         return faces_to_show
 
-
     def __iadd__(self, part: Builder | _.Part | tuple[Builder | _.Part, Mode]):
         if isinstance(part, tuple):
             self.add(*part)
@@ -101,6 +100,11 @@ class Builder:
         else:
             self.intersect(part)
         return self
+
+    @property
+    def last(self):
+        """Return the last mutation."""
+        return self.mutations[-1]
 
     def get_faces_mutations(self) -> dict[Hash, int]:
         """Return a dictionnary containing for each face hash, the mutation that
@@ -186,7 +190,7 @@ class Builder:
         # TODO: remove faces_alias from mutation and pass them to builder faces?
         mutation = Mutation(
             obj,
-            self.mutations[-1] if self.mutations else None,
+            self.last if self.mutations else None,
             name,
             len(self.mutations),
             faces_alias,
