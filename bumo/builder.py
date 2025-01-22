@@ -196,11 +196,15 @@ class Builder:
             faces_alias,
         )
 
-        for face in mutation.faces:
+        for face in mutation.faces_added + mutation.faces_altered:
             if face.label not in self.faces_dict:
                 self.faces_dict[face.label] = face
 
+        for face in mutation.faces_added:
             self.faces_modes[face.label] = mode
+
+        for face in mutation.faces_altered:
+            self.faces_modes[face.label] = AUTO
 
         self.mutations.append(mutation)
         return mutation
