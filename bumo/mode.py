@@ -3,6 +3,7 @@ from enum import Enum
 import build123d as _
 
 from . import config
+from .colors import ColorLike, cast_color
 
 
 class ModeType(Enum):
@@ -25,6 +26,12 @@ class Mode:
             return config.DEFAULT_COLOR
 
         return self.color
+
+
+def cast_mode(mode: Mode | ColorLike) -> Mode:
+    if isinstance(mode, Mode):
+        return mode
+    return Mode(ModeType.FIXED, cast_color(mode))
 
 
 AUTO = Mode(ModeType.AUTO, config.DEFAULT_COLOR)

@@ -8,8 +8,8 @@ import build123d as _
 from tabulate import tabulate
 
 from .mutation import Mutation
-from .mode import Mode, ModeType, AUTO, DEBUG
-from .colors import color_to_str, get_rvb
+from .mode import Mode, ModeType, cast_mode, AUTO, DEBUG
+from .colors import color_to_str, get_rvb, ColorLike
 from .shapes import Hash, ShapeList, add_shape_hash
 from . import config
 
@@ -73,28 +73,28 @@ class Builder:
 
         return faces_to_show
 
-    def __iadd__(self, part: Builder | _.Part | tuple[Builder | _.Part, Mode]):
+    def __iadd__(self, part: Builder | _.Part | tuple[Builder | _.Part, Mode | ColorLike]):
         if isinstance(part, tuple):
             self.add(*part)
         else:
             self.add(part)
         return self
 
-    def __isub__(self, part: Builder | _.Part | tuple[Builder | _.Part, Mode]):
+    def __isub__(self, part: Builder | _.Part | tuple[Builder | _.Part, Mode | ColorLike]):
         if isinstance(part, tuple):
             self.sub(*part)
         else:
             self.sub(part)
         return self
 
-    def __imul__(self, location: _.Location | tuple[_.Location, Mode]):
+    def __imul__(self, location: _.Location | tuple[_.Location, Mode | ColorLike]):
         if isinstance(location, tuple):
             self.move(*location)
         else:
             self.move(location)
         return self
 
-    def __iand__(self, part: Builder | _.Part | tuple[Builder | _.Part, Mode]):
+    def __iand__(self, part: Builder | _.Part | tuple[Builder | _.Part, Mode | ColorLike]):
         if isinstance(part, tuple):
             self.intersect(*part)
         else:
@@ -179,7 +179,7 @@ class Builder:
             self,
             name: str,
             obj: _.Part,
-            mode: Mode,
+            mode: Mode | ColorLike,
             faces_alias: dict[Hash, Hash] | None=None
         ) -> Mutation:
         """Base mutation: mutate the current object to the given one by applying
@@ -201,7 +201,7 @@ class Builder:
                 self.faces_dict[face.label] = face
 
         for face in mutation.faces_added:
-            self.faces_modes[face.label] = mode
+            self.faces_modes[face.label] = cast_mode(mode)
 
         for face in mutation.faces_altered:
             self.faces_modes[face.label] = AUTO
@@ -212,7 +212,7 @@ class Builder:
     def move(
             self,
             location: _.Location,
-            mode: Mode = AUTO,
+            mode: Mode | ColorLike = AUTO,
         ) -> Mutation:
         """Mutation: move the object to the given location, keeping the colors.
         with the given color and debug mode.
@@ -225,52 +225,52 @@ class Builder:
             face_moved = add_shape_hash(location * face)
             faces_alias[face_moved.label] = face.label
 
-        return self.mutate('move', obj, mode, faces_alias)
+        return self.mutate('move', obj, cast_mode(mode), faces_alias)
 
     def add(
             self,
             part: Builder | _.Part,
-            mode: Mode = AUTO,
+            mode: Mode | ColorLike = AUTO,
         ) -> Mutation:
         """Mutation: fuse the given part to the current object.
         with the given color and debug mode."""
 
         obj = self.object + self._cast_part(part)
-        return self.mutate('add', obj, mode)
+        return self.mutate('add', obj, cast_mode(mode))
 
     def sub(
             self,
             part: Builder | _.Part,
-            mode: Mode = AUTO,
+            mode: Mode | ColorLike = AUTO,
         ) -> Mutation:
         """Mutation: substract the given part from the current object,
         with the given color and debug mode."""
 
         obj = self.object - self._cast_part(part)
-        return self.mutate('sub', obj, mode)
+        return self.mutate('sub', obj, cast_mode(mode))
 
     def intersect(
             self,
             part: Builder | _.Part,
-            mode: Mode = AUTO,
+            mode: Mode | ColorLike = AUTO,
         ) -> Mutation:
         """Mutation: intersects the given part to the current object,
         with the given color and debug mode."""
 
         obj = self.object & self._cast_part(part)
-        return self.mutate('inter', obj, mode)
+        return self.mutate('inter', obj, cast_mode(mode))
 
     def fillet(
             self,
             edges: Iterable[_.Edge] | _.Edge,
             radius: float,
-            mode: Mode = AUTO,
+            mode: Mode | ColorLike = AUTO,
         ) -> Mutation:
         """Mutation: apply a fillet of the given radius to the given edges of
         the current object, with the given color and debug mode."""
 
         obj = self.object.fillet(radius, self._cast_edges(edges))
-        return self.mutate('fillet', obj, mode)
+        return self.mutate('fillet', obj, cast_mode(mode))
 
     def chamfer(
             self,
@@ -278,14 +278,14 @@ class Builder:
             length: float,
             length2: float | None=None,
             face: _.Face | None=None,
-            mode: Mode = AUTO,
+            mode: Mode | ColorLike = AUTO,
         ) -> Mutation:
         """Mutation: apply a chamfer of the given length to the given edges of
         the current object, with the given color and debug mode."""
 
         edges = self._cast_edges(edges)
         obj = self.object.chamfer(length, length2, edges, face) # type: ignore
-        return self.mutate('chamfer', obj, mode)
+        return self.mutate('chamfer', obj, cast_mode(mode))
 
     def info(self, file=None):
         """Print the list of mutations to the given file (stdout by default)."""
@@ -326,12 +326,12 @@ class Builder:
         )
         print(str_table, file=file or stdout)
 
-    def debug(self, faces: ShapeList, mode: Mode=DEBUG):
+    def debug(self, faces: ShapeList, mode: Mode | ColorLike=DEBUG):
         """Set a face for debugging, so it will appear in the given color while
         the rest of the object will be translucent."""
 
         for face in self._cast_faces(faces):
-            self.faces_modes[face.label] = mode
+            self.faces_modes[face.label] = cast_mode(mode)
 
     def export(
             self,
