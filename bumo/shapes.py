@@ -62,9 +62,10 @@ ShapeLike: TypeAlias = _.Face | _.Edge | _.Vertex
 ShapeT = TypeVar("ShapeT", bound=_.Face | _.Edge | _.Vertex)
 
 
-def add_shape_hash(shape: ShapeT) -> ShapeT:
-    """Add the hash of the given shape to the shape label."""
-    if not shape.label:
+def add_shape_hash(shape: ShapeT, force=False) -> ShapeT:
+    """Add the hash of the given shape to the shape label, only if it doesn't
+    exit or if force is True."""
+    if force or not shape.label:
         shape.label = hash_shape(shape)
     return shape
 

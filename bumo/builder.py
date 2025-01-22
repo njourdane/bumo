@@ -222,7 +222,7 @@ class Builder:
         faces_alias: dict[Hash, Hash] = {}
 
         for face in ShapeList(self.object.faces()):
-            face_moved = add_shape_hash(location * face)
+            face_moved = add_shape_hash(location * face, True)
             faces_alias[face_moved.label] = face.label
 
         return self.mutate('move', obj, cast_mode(mode), faces_alias)
