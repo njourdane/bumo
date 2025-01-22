@@ -1,15 +1,20 @@
 # Bumo
 
-BUild123d Mutables Objects
+**Bu**ild123d **m**utables **o**bjects
 
-An experimental package used to manage [Build123d](https://github.com/gumyr/build123d) objects by applying mutations on them.
+![](images/chamfers_and_fillets.png)
 
-It can be used:
-- just out of curiosity, because it's a new way to build things;
-- as a debug tool, using colors and debug mode;
-- as a more object-oriented approach to build CAD parts.
+## Introduction
 
-![](./images/chamfers_and_fillets.png)
+Bumo is a Python package that work with the [Build123d](https://github.com/gumyr/build123d) CAD library.
+
+It essentially consists in a new class `Builder` used to update a CAD model: instead of creating a new instance of a CAD object each time an operation is made, the builder mutates to its new shape.
+
+This slight difference on the behavior allows to:
+- get more intuitive results when altering object attributes or when working with class inheritance;
+- keep track of all the CAD object history, which can be used for various features, such as faces coloration based on operations.
+
+The following instructions assumes you already know the basics of Build123d: if necessary please take a look at the [Build123d docs](https://build123d.readthedocs.io/en/latest/) before to continue.
 
 ## Installation
 
@@ -23,13 +28,9 @@ or with pip:
 
 ## Getting started
 
-Bumo is not a cad library on its own and does not aim to replace Build123d, you should take a look at [the Build123d docs](https://build123d.readthedocs.io/en/latest/) before using it.
+### Simple example
 
-*Note: In the following examples we will use [ocp vscode](https://github.com/bernhard-42/vscode-ocp-cad-viewer/issues), but any other viewer should work.*
-
-### Instantiating the builder
-
-First, let's instanciate a Bumo builder. Note that we must call the object (`b()`) when passing it to the show function.
+Let's start with some basic operations:
 
 ```py
 import build123d as _
@@ -38,39 +39,26 @@ from bumo import Builder
 
 b = Builder()
 
+b += _.Box(8, 8, 2)
+b -= _.Cylinder(2, 15)
+b *= _.Rotation(0, 25, 0)
+b &= _.Cylinder(4, 8)
+
 show_object(b(), clear=True)
 ```
 
-At this point you should get a `ValueError: No mutation to show.`, because, hem, there is no mutation to show.
+Wich will produce this:
 
-The import lines and show function will be the same in the next examples, so let's ignore them and focus on the builder-related code.
+![](images/basic.png)
 
-### Adding mutations
+For now there are no big differences here compared to the classical way to use Build123d, but let's analyze these 4 parts anyway:
 
-When applying an operation, instead of returning a copy of the modified object, the builder mutates the object:
+1. **Imports**: respectively, the Build123d CAD library, the [ocp-vscode viewer](https://github.com/bernhard-42/vscode-ocp-cad-viewer/issues), and Bumo (I have a personal preference for named imports over wildcard imports, but do as you wish);
+2. **Builder instantiation**;
+3. **Applying mutations**: respectively, `fuse`, `substract`, `move`, and `intersect` (note that their counterparts `+`, `-`, `*`, `&` are not available);
+4. **Show**: using ocp-vscode here, but any viewer should work (note that we must call the builder (`b()`) when passing it to the show function).
 
-```py
-b = Builder()
-b.add(_.Box(12, 12, 2))
-b.add(_.Box(8, 8, 4))
-b.sub(_.Cylinder(3, 4))
-```
-
-![](./images/base.png)
-
-## Alternative syntax
-
-Alternatively you can use the assignment operators:
-
-```py
-b = Builder()
-b += _.Box(12, 12, 2) # fuse
-b += _.Box(8, 8, 4)
-b -= _.Cylinder(3, 4) # substract
-b &= _.Cylinder(5, 4) # intersect
-```
-
-Note that their counterpart `+`, `-`, `&` are not allowed.
+Parts 1. and 4. will always be the same here, so let's ignore them and focus on the builder-related stuff for the next examples.
 
 ### Listing mutations
 
@@ -80,82 +68,111 @@ You can print the list of mutations and their properties:
 b.info()
 ```
 
-The previous example will produce the following table:
+This will produce a table like this:
 
 ![](./images/info.png)
 
-With:
+There is one row per muation, and their colors match the faces colors, which is convenient to quicly make a link between the operations and the altered faces.
+
+Column details:
 - **Idx**: mutation index;
 - **Id**: mutation id;
 - **Type**: operation type;
-- **Color**: faces color for this mutation;
-- **f+**, **f~**, **f-**: amount of added/altered/removed faces on this mutation;
-- **e+**, **e~**, **e-**: amount of added/altered/removed edges on this mutation;
+- **F+**, **F~**, **F-**: amount of added/altered/removed faces on this mutation;
+- **E+**, **E~**, **E-**: amount of added/altered/removed edges on this mutation;
 
-### Moving objects
+### Listing shapes
 
-You can move objects with `move()`, all colors will be preserved. Note that you can still use the Build123d `*` operator before passing the object to the builder.
+The info method is accessible from any mutation shapes attribute (`faces_altered`, `edges_removed`, etc.), for instance:
 
 ```py
 b = Builder()
-b.add(_.Box(12, 12, 2))
-b.add(_.Box(8, 8, 4))
-b.move(_.Location([-5, 2, 0]))
-b.sub(_.Rotation(25, 25, 0) * _.Cylinder(2.5, 10))
+b += _.Box(1, 2, 3)
+b.last.faces_added.info()
 ```
 
-![](./images/move.png)
+Will produce:
 
-The affectation operator `*=` is available here:
+```
+╒════════╤════════════════╤════════╤════════════════╤═══════════════╕
+│ Hash   │ Type           │   Area │ Position       │ Orientation   │
+╞════════╪════════════════╪════════╪════════════════╪═══════════════╡
+│ 634e76 │ GeomType.PLANE │      6 │ [-0.5, -1, -2] │ [-0, 0, -0]   │
+│ 75e78b │ GeomType.PLANE │      6 │ [-0.5, -1, -2] │ [-0, 0, -0]   │
+│ fdc160 │ GeomType.PLANE │      3 │ [-0.5, -1, -2] │ [-0, 0, -0]   │
+│ 7843d9 │ GeomType.PLANE │      3 │ [-0.5, -1, -2] │ [-0, 0, -0]   │
+│ fc164c │ GeomType.PLANE │      2 │ [-0.5, -1, -2] │ [-0, 0, -0]   │
+│ f6c299 │ GeomType.PLANE │      2 │ [-0.5, -1, -2] │ [-0, 0, -0]   │
+╘════════╧════════════════╧════════╧════════════════╧═══════════════╛
+```
+
+### Extended syntax
+
+The example above could also have been written like this:
 
 ```py
-b *= _.Location([-5, 2, 0])
+b = Builder()
+b.add(_.Box(8, 8, 2))
+b.sub(_.Cylinder(2, 15))
+b.move(_.Rotation(0, 25, 0))
+b.intersect(_.Cylinder(4, 8))
 ```
+
+This syntax allows to store the mutation itself into an object for later use.
 
 ### Reusing mutations
 
-Instead of returning a copy of the object, mutations return a `Mutation` object that can be used to retrieve the altered faces and edges. Mutations can also be accessed by querrying a builder index (ie. `b[n]`). This is useful with fillets and chamfers:
+`Mutation` objects can be used to retrieve the added, altered, removed and untouched faces or edges on this mutation (for instance when working with fillets and chamfers), and they can be accessed either with:
+- the return value of a mutation (ex. `hole = b.sub()`);
+- querrying a builder index (ex. `b[2]`);
+- using the last attribute (ex. `b.last`);
 
 ```py
 b = Builder()
 b.add(_.Box(12, 12, 2))
 b.add(_.Box(8, 8, 4))
-b.fillet(b[-1].edges_added(), 0.4)
+b.fillet(b.last.edges_added(), 0.4)
 hole = b.sub(_.Cylinder(3, 4))
 b.chamfer(hole.edges_added()[0], 0.3)
 ```
 
 ![](./images/chamfers_and_fillets.png)
 
-### Changing colors
-
-On each mutation you can pass a specific color instead of the auto-generated-one:
-
-```py
-b = Builder()
-b.add(_.Box(12, 12, 2), "orange")
-b.add(_.Box(8, 8, 4), "green")
-b.sub(_.Cylinder(3, 4), "violet")
-```
-
-![](./images/colors.png)
-
 ### Using the debug mode
 
-You can turn one or several mutations in debug mode, so all the other faces will be translucent. Either by passing a debug attribute to mutations, or passing faces (even removed ones) to the debug method:
+You can turn one or several mutations in debug mode, so all the other faces will be translucent, either by:
+
+- passing DEBUG to the `mode` argument of a mutation method (ex: `b.add(..., mode=DEBUG)`);
+- passing DEBUG to mutation assignment operator (ex: `b += ..., DEBUG`);
+- passing faces (even removed ones) to the debug method (ex: `b.debug(...)`).
 
 ```py
-b = Builder()
-b.add(_.Box(12, 12, 2))
-b.add(_.Box(8, 8, 4))
-b.fillet(b[-1].edges_added(), 0.4)
+from bumo import Builder, DEBUG
+
+b += _.Box(12, 12, 2)
+b += _.Box(8, 8, 4)
+# b += _.Box(8, 8, 4), DEBUG
+b.fillet(b.last.edges_added, 0.4)
 hole = b.sub(_.Cylinder(3, 4))
-b.chamfer(hole.edges_added()[0], 0.3, debug=True)
-b.debug(b[2].faces_altered()[0], "red")
-# b.debug(hole.faces_removed(), "red")
+b.chamfer(hole.edges_added[0], 0.3, mode=DEBUG)
+b.debug(b[2].faces_altered[0])
+# b.debug(hole.faces_removed())
 ```
 
 ![](./images/debug.png)
+
+### Changing colors
+
+By default, mutations are colored using a color palette. Using the same `mode` used earlier, you can pass a specific color instead of the auto-generated-one:
+
+```py
+b = Builder()
+b += _.Box(12, 12, 2), "orange"
+b += _.Box(8, 8, 4), "green"
+b += _.Cylinder(3, 4), "violet"
+```
+
+![](./images/colors.png)
 
 ### Mutation with builders
 
@@ -174,21 +191,22 @@ b.sub(_.Cylinder(3, 4))
 
 ### Configuring the builder
 
-You can configure the builder according to your needs:
+You can configure Bumo according to your needs:
 
 ```py
-Builder.debug_alpha = 0.5
-Builder.default_color = "grey"
-Builder.color_palette = ColorPalette.INFERNO
+from bumo import config
+
+config.DEBUG_ALPHA = 0.5
+config.COLOR_PALETTE = ColorPalette.INFERNO
 ```
 
 Options are:
 
-- `autocolor`: Set to True to automatically set a color on each mutation based (default: True)
-- `color_palette`: The color palette to use when auto_color is enabled, one of VIRIDIS, INFERNO, MAGMA, PLASMA (default: VIRIDIS)
-- `debug_alpha`: The alpha values used for translucent shapes in debug mode (default: 0.2)
-- `default_color`: The default color to be used when a color is passed to a mutation (default: "orange")
-- `default_debug_color`: The default color to be used when using the debug mode (default: "red")
-- `info_colors`: Set to False to disable terminal colors in the info table (default: True)
-- `info_table_style`: The [table format](https://github.com/astanin/python-tabulate?tab=readme-ov-file#table-format) used in the info table (default: "fancy_grid")
-- `info_hex_colors`: Set to False to show colors in hex format in the info table (default: False)
+- **COLOR_PALETTE**: The color palette to use when auto_color is enabled (`ColorPalette.VIRIDIS`);
+- **DEBUG_ALPHA**: The alpha value used for translucent shapes in debug mode (`0.2`);
+- **DEFAULT_COLOR**: The default color to be used when a color is passed to a mutation (`Color("orange")`);
+- **DEFAULT_DEBUG_COLOR**: The default color to be used when using the debug mode (default: `Color("red")`);
+- **INFO_COLOR**: Set to False to disable terminal colors in the info table (default: `True`);
+- **INFO_TABLE_FORMAT** = The [table format](https://github.com/astanin/python-tabulate?tab=readme-ov-file#table-format) used in the info table (default: `"fancy_outline"`);
+- **COLUMNS_MUTATIONS**: The columns to display in mutations info tables, among: idx, label, type, color_hex, color_name, f+, f~, f-, e+, e~, e- (default: `["idx", "label", "type", "f+", "f~", "f-", "e+", "e~", "e-"]`);
+- **COLUMNS_SHAPES**: The columns to display in shapes info tables, among: hash, type, area, color_hex, color_name. (default: `["hash", "type", "area", "position", "orientation"]`).
